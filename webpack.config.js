@@ -27,7 +27,7 @@ module.exports = {
   resolve: {
     extensions: ['.tsx', '.ts', '.js'],
     alias: {
-      '@types': path.resolve(__dirname, 'src/types'),  // 型定義のエイリアスを追加
+      '@types': path.resolve(__dirname, 'src/types'),
     },
   },
   plugins: [
