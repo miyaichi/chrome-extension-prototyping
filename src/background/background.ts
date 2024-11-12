@@ -1,5 +1,7 @@
 // src/background/background.ts
 
+let activeTabId: number | null = null;
+
 // Set up the side panel to be displayed in the UI
 chrome.sidePanel
   .setOptions({
@@ -18,10 +20,28 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.action.onClicked.addListener((tab) => {
   if (!tab.id) return;
   
+  // Deactivate previous tab if exists
+  if (activeTabId && activeTabId !== tab.id) {
+    chrome.tabs.sendMessage(activeTabId, { type: 'DEACTIVATE_EXTENSION' })
+      .catch(error => console.log('Error deactivating previous tab:', error));
+  }
+
+  // Activate new tab
+  activeTabId = tab.id;
+  chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_EXTENSION' })
+    .catch(error => console.log('Error activating new tab:', error));
+  
   // Open the side panel
   chrome.sidePanel
     .open({ tabId: tab.id })
     .catch((error) => console.error(error));
+});
+
+// Handle tab removal
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (tabId === activeTabId) {
+    activeTabId = null;
+  }
 });
 
 // Handle connections from content scripts
