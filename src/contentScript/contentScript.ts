@@ -11,6 +11,8 @@ interface DOMElement {
 
 let highlightedElement: HTMLElement | null = null;
 let previewElement: HTMLElement | null = null;
+let messageListener: ((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => void) | null = null;
+let clickHandler: ((event: Event) => void) | null = null;
 
 function serializeDOMElement(element: Element, currentPath: number[] = []): DOMElement {
   const serialized: DOMElement = {
@@ -136,8 +138,26 @@ function getElementPath(element: Element): number[] {
   return path;
 }
 
-// Message Handler
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+function handleClick(event: Event) {
+  if (event.target instanceof HTMLElement) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const element = event.target;
+    highlightElement(element);
+    
+    const path = getElementPath(element);
+    
+    chrome.runtime.sendMessage({
+      type: 'DOM_ELEMENT_UPDATE',
+      element: serializeDOMElement(element, path)
+    });
+  }
+}
+
+function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+  console.log('[Content Script] Received message:', message.type);
+  
   switch (message.type) {
     case 'GET_INITIAL_DOM': {
       const rootElement = serializeDOMElement(document.documentElement);
@@ -170,50 +190,99 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
     case 'CLEAR_PREVIEW': {
       removePreview();
-      // If there is a selected element, re-highlight it
       if (highlightedElement) {
         highlightElement(highlightedElement);
       }
       break;
     }
       
-    case 'CLEAR_HIGHLIGHT':
-      removeHighlight();
-      removePreview();
+    case 'CLEANUP_EXTENSION': {
+      console.log('[Content Script] Received cleanup request');
+      cleanup();
+      sendResponse({ success: true });
       break;
+    }
   }
-});
 
-// Click Event Handler
-document.addEventListener('click', (event) => {
-  if (event.target instanceof HTMLElement) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const element = event.target;
-    highlightElement(element);
-    
-    const path = getElementPath(element);
-    
-    chrome.runtime.sendMessage({
-      type: 'DOM_ELEMENT_UPDATE',
-      element: serializeDOMElement(element, path)
-    });
-  }
-}, true);
-
-// Cleanup
-function cleanup() {
-  removeHighlight();
-  removePreview();
+  return true;
 }
 
-// Cleanup when the page is hidden/unloaded
-window.addEventListener('pagehide', cleanup);
-
-// Cleanup when the tab is closed
-window.addEventListener('visibilitychange', () => {
+function handleVisibilityChange() {
   if (document.visibilityState === 'hidden') {
     cleanup();
   }
-});
+}
+
+function cleanup() {
+  console.log('[Content Script] Running cleanup');
+
+  try {
+    // Remove visual highlights
+    if (highlightedElement || previewElement) {
+      removeHighlight();
+      removePreview();
+      console.log('[Content Script] Removed highlights');
+    }
+
+    // Remove message listener
+    if (messageListener) {
+      chrome.runtime.onMessage.removeListener(messageListener);
+      messageListener = null;
+      console.log('[Content Script] Removed message listener');
+    }
+
+    // Remove click handler
+    if (clickHandler) {
+      document.removeEventListener('click', clickHandler, true);
+      clickHandler = null;
+      console.log('[Content Script] Removed click handler');
+    }
+
+    // Remove other event listeners
+    window.removeEventListener('pagehide', cleanup);
+    window.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('beforeunload', cleanup);
+    console.log('[Content Script] Removed window event listeners');
+
+  } catch (error) {
+    console.error('[Content Script] Error during cleanup:', error);
+  }
+
+  console.log('[Content Script] Cleanup complete');
+}
+
+function initialize() {
+  console.log('[Content Script] Initializing');
+
+  try {
+    // Cleanup any existing state first
+    cleanup();
+
+    // Store references to event handlers
+    messageListener = handleMessage;
+    clickHandler = handleClick;
+
+    // Add event listeners
+    chrome.runtime.onMessage.addListener(messageListener);
+    document.addEventListener('click', clickHandler, true);
+    window.addEventListener('pagehide', cleanup);
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', cleanup);
+
+    // Create a connection to the extension
+    const port = chrome.runtime.connect({ name: 'content-script-connection' });
+    
+    // Listen for disconnection
+    port.onDisconnect.addListener(() => {
+      console.log('[Content Script] Port disconnected');
+      cleanup();
+    });
+
+    console.log('[Content Script] Initialization complete');
+  } catch (error) {
+    console.error('[Content Script] Error during initialization:', error);
+  }
+}
+
+// Initialize the content script
+initialize();

@@ -1,6 +1,6 @@
 // src/sidepanel/SidePanel.tsx
 import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 interface DOMElement {
   tag: string;
@@ -20,6 +20,35 @@ const SidePanel: React.FC = () => {
   const [elementStack, setElementStack] = useState<DOMElement[]>([]);
   const [showDetails, setShowDetails] = useState(false);
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
+
+  const cleanup = useCallback(() => {
+    debugLog('Running cleanup');
+    if (activeTabId) {
+      chrome.tabs.sendMessage(
+        activeTabId, 
+        { type: 'CLEANUP_EXTENSION' },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            debugLog('Error during cleanup:', chrome.runtime.lastError);
+          } else {
+            debugLog('Cleanup completed successfully:', response);
+          }
+        }
+      );
+    }
+  }, [activeTabId]);
+
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'hidden') {
+      debugLog('Side panel hidden, running cleanup');
+      cleanup();
+    }
+  }, [cleanup]);
+
+  const handleBeforeUnload = useCallback((event: BeforeUnloadEvent) => {
+    debugLog('beforeunload event triggered');
+    cleanup();
+  }, [cleanup]);
 
   useEffect(() => {
     debugLog('Initializing side panel');
@@ -46,19 +75,19 @@ const SidePanel: React.FC = () => {
 
     chrome.runtime.onMessage.addListener(messageListener);
 
-    // Cleanup listener and connection on unmount
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup on unmount
     return () => {
       debugLog('Cleaning up side panel');
       chrome.runtime.onMessage.removeListener(messageListener);
-      
-      if (activeTabId) {
-        chrome.tabs.sendMessage(activeTabId, { type: 'CLEANUP_EXTENSION' })
-          .catch(error => {
-            debugLog('Error sending cleanup message:', error);
-          });
-      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      cleanup();
     };
-  }, []);
+  }, [cleanup, handleBeforeUnload, handleVisibilityChange]);
 
   const handleElementSelect = (element: DOMElement) => {
     debugLog('Element selected:', element);

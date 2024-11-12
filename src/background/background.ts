@@ -23,3 +23,12 @@ chrome.action.onClicked.addListener((tab) => {
     .open({ tabId: tab.id })
     .catch((error) => console.error(error));
 });
+
+// Handle connections from content scripts
+chrome.runtime.onConnect.addListener((port) => {
+  console.log('[Background] New connection from:', port.name);
+
+  port.onDisconnect.addListener(() => {
+    console.log('[Background] Port disconnected:', port.name);
+  });
+});
