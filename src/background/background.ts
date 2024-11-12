@@ -1,16 +1,11 @@
 // src/background/background.ts
-import { Settings } from '../types';
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((error) => console.error(error));
 
-chrome.runtime.onInstalled.addListener(() => {
-  // Initialize default settings
-  const defaultSettings: Settings = {
-    enabled: true,
-    // Add other default settings
-  };
-
-  chrome.storage.sync.set({ settings: defaultSettings });
-});
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Handle messages from content script or popup
+chrome.action.onClicked.addListener(async (tab) => {
+  // If a tab exists, get the window ID of that tab
+  if (tab.windowId) {
+    await chrome.sidePanel.open({ windowId: tab.windowId });
+  }
 });

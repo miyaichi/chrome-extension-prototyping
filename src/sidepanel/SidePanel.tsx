@@ -1,8 +1,8 @@
-// src/popup/Popup.tsx
+// src/sidepanel/SidePanel.tsx
 import React, { useEffect, useState } from 'react';
 import { Settings } from '../types';
 
-const Popup: React.FC = () => {
+const SidePanel: React.FC = () => {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
@@ -13,10 +13,10 @@ const Popup: React.FC = () => {
   }, []);
 
   return (
-    <div className="popup">
-      <h1>Chrome Extension</h1>
+    <div className="h-full w-full bg-white dark:bg-gray-800 p-4">
+      <h1 className="text-xl font-bold mb-4">Chrome Extension</h1>
       {settings && (
-        <div>
+        <div className="space-y-4">
           {/* Settings display/edit UI */}
         </div>
       )}
@@ -24,4 +24,4 @@ const Popup: React.FC = () => {
   );
 };
 
-export default Popup;
+export default SidePanel;

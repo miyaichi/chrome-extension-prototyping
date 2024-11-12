@@ -6,7 +6,7 @@ module.exports = {
   mode: 'development',
   devtool: 'source-map',
   entry: {
-    popup: './src/popup/index.tsx',
+    sidepanel: './src/sidepanel/index.tsx',
     background: './src/background/background.ts',
     contentScript: './src/contentScript/contentScript.ts',
   },
@@ -28,6 +28,7 @@ module.exports = {
     extensions: ['.tsx', '.ts', '.js'],
     alias: {
       '@types': path.resolve(__dirname, 'src/types'),
+      '@assets': path.resolve(__dirname, 'src/assets'),
     },
   },
   plugins: [
@@ -35,6 +36,7 @@ module.exports = {
       patterns: [
         { from: 'public', to: '.' },
         { from: 'manifest.json', to: '.' },
+        { from: 'src/assets/icons/build', to: 'icons' },
       ],
     }),
   ],
