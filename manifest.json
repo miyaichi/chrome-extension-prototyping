@@ -3,7 +3,8 @@
   "name": "Chrome Extension Template",
   "version": "1.0",
   "description": "Chrome Extension Template with TypeScript and React",
-  "permissions": ["storage", "sidePanel"],
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_icon": {
       "16": "icons/icon16.png",
@@ -12,7 +13,8 @@
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "side_panel": {
     "default_path": "sidepanel.html"

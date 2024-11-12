@@ -1,11 +1,25 @@
 // src/background/background.ts
+
+// Set up the side panel to be displayed in the UI
 chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionClick: true })
+  .setOptions({
+    enabled: true,
+    path: 'sidepanel.html'
+  })
   .catch((error) => console.error(error));
 
-chrome.action.onClicked.addListener(async (tab) => {
-  // If a tab exists, get the window ID of that tab
-  if (tab.windowId) {
-    await chrome.sidePanel.open({ windowId: tab.windowId });
-  }
+// When the extension is installed
+chrome.runtime.onInstalled.addListener(() => {
+  // Default side panel settings
+  chrome.action.setTitle({ title: 'Open DOM Inspector' });
+});
+
+// When the toolbar icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab.id) return;
+  
+  // Open the side panel
+  chrome.sidePanel
+    .open({ tabId: tab.id })
+    .catch((error) => console.error(error));
 });
