@@ -1,6 +1,7 @@
 // src/sidepanel/SidePanel.tsx
-import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { ArrowUp, ChevronRight, Eye, Undo } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
+import { Tooltip } from 'react-tooltip';
 
 interface DOMElement {
   tag: string;
@@ -52,25 +53,36 @@ const SidePanel: React.FC = () => {
 
   useEffect(() => {
     debugLog('Initializing side panel');
+    let isComponentMounted = true;
     
     // Get the active tab ID
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!isComponentMounted) return;
+      
       if (tabs[0]?.id) {
         debugLog('Active tab ID:', tabs[0].id);
         setActiveTabId(tabs[0].id);
         
         // Request initial DOM structure
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_INITIAL_DOM' });
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_INITIAL_DOM' })
+          .catch(error => debugLog('Error getting initial DOM:', error));
       }
     });
 
     // Listen for DOM updates from content script
-    const messageListener = (message: any, sender: chrome.runtime.MessageSender) => {
+    const messageListener = (
+      message: any,
+      sender: chrome.runtime.MessageSender,
+      sendResponse: (response?: any) => void
+    ) => {
       debugLog('Received message:', message);
-      if (message.type === 'DOM_ELEMENT_UPDATE') {
-        debugLog('Updating current element:', message.element);
+      
+      if (message.type === 'DOM_ELEMENT_UPDATE' && isComponentMounted) {
         setCurrentElement(message.element);
+        sendResponse({ received: true });
+        return false;
       }
+      return false;
     };
 
     chrome.runtime.onMessage.addListener(messageListener);
@@ -82,6 +94,7 @@ const SidePanel: React.FC = () => {
     // Cleanup on unmount
     return () => {
       debugLog('Cleaning up side panel');
+      isComponentMounted = false;
       chrome.runtime.onMessage.removeListener(messageListener);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -89,9 +102,10 @@ const SidePanel: React.FC = () => {
     };
   }, [cleanup, handleBeforeUnload, handleVisibilityChange]);
 
-  const handleElementSelect = (element: DOMElement) => {
-    debugLog('Element selected:', element);
-    debugLog('Element path:', element.path);
+  // Navigate to the clicked child element
+  const navigateToChild = (childElement: DOMElement) => {
+    debugLog('Navigating to child element:', childElement);
+    debugLog('Child element path:', childElement.path);
 
     if (!activeTabId) {
       debugLog('No active tab ID available');
@@ -101,29 +115,51 @@ const SidePanel: React.FC = () => {
     if (currentElement) {
       setElementStack((prev) => [...prev, currentElement]);
     }
-    setCurrentElement(element);
+    setCurrentElement(childElement);
 
     chrome.tabs.sendMessage(activeTabId, {
       type: 'SELECT_ELEMENT',
-      path: element.path
+      path: childElement.path
     }).catch(error => {
       debugLog('Error sending selection message:', error);
     });
   };
 
-  const handleElementHover = (element: DOMElement) => {
+  // Preview the child element on hover
+  const previewChildElement = (childElement: DOMElement) => {
     if (!activeTabId) return;
     
-    debugLog('Element hover:', element);
+    debugLog('Previewing child element:', childElement);
     chrome.tabs.sendMessage(activeTabId, {
       type: 'PREVIEW_ELEMENT',
-      path: element.path
+      path: childElement.path
     }).catch(error => {
       debugLog('Error sending preview message:', error);
     });
   };
 
-  const handleElementLeave = () => {
+  // Navigate to the parent element
+  const navigateToParent = () => {
+    if (!activeTabId || !currentElement || currentElement.path.length <= 1) {
+      debugLog('Cannot navigate to parent - no parent element available');
+      return;
+    }
+
+    debugLog('Navigating to parent element');
+    const parentPath = currentElement.path.slice(0, -1);
+
+    setElementStack((prev) => [...prev, currentElement]);
+    
+    chrome.tabs.sendMessage(activeTabId, {
+      type: 'SELECT_ELEMENT',
+      path: parentPath
+    }).catch(error => {
+      debugLog('Error sending parent navigation message:', error);
+    });
+  };
+  
+  // Clear the child element preview
+  const clearElementPreview = () => {
     if (!activeTabId) return;
 
     chrome.tabs.sendMessage(activeTabId, {
@@ -133,7 +169,8 @@ const SidePanel: React.FC = () => {
     });
   };
 
-  const handleBack = () => {
+  // Undo the last navigation
+  const navigateBack = () => {
     if (!activeTabId) {
       debugLog('No active tab ID available');
       return;
@@ -164,19 +201,29 @@ const SidePanel: React.FC = () => {
           <button
             onClick={() => setShowDetails(!showDetails)}
             className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-            title="Toggle details"
+            data-tooltip-id="button-tooltip"
+            data-tooltip-content="Toggle details"
           >
             <Eye size={20} />
           </button>
-          {elementStack.length > 0 && (
-            <button
-              onClick={handleBack}
-              className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-              title="Go back"
-            >
-              <ChevronLeft size={20} />
-            </button>
-          )}
+          <button
+            onClick={navigateToParent}
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            disabled={!currentElement || currentElement.path.length <= 1}
+            data-tooltip-id="button-tooltip"
+            data-tooltip-content="Move to parent element"
+          >
+            <ArrowUp size={20} />
+          </button>
+          <button
+            onClick={navigateBack}
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            disabled={!currentElement || elementStack.length === 0}
+            data-tooltip-id="button-tooltip"
+            data-tooltip-content="Undo last selection"
+          >
+            <Undo size={20} />
+          </button>
         </div>
       </div>
 
@@ -208,9 +255,9 @@ const SidePanel: React.FC = () => {
                 {currentElement.children.map((child, index) => (
                   <button
                     key={index}
-                    onClick={() => handleElementSelect(child)}
-                    onMouseEnter={() => handleElementHover(child)}
-                    onMouseLeave={handleElementLeave}
+                    onClick={() => navigateToChild(child)}
+                    onMouseEnter={() => previewChildElement(child)}
+                    onMouseLeave={clearElementPreview}
                     className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-between"
                   >
                     <span>
@@ -226,6 +273,11 @@ const SidePanel: React.FC = () => {
           )}
         </div>
       )}
+      <Tooltip
+        id="button-tooltip"
+        place="bottom"
+        style={{ backgroundColor: '#333', color: '#fff' }}
+      />
     </div>
   );
 };

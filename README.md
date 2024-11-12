@@ -9,17 +9,18 @@ TypeScriptとReactを使用したChrome拡張機能のテンプレートプロ�
 - サイドパネルUI
 - コンテンツスクリプト
 - バックグラウンドスクリプト
+- DOM操作、メッセージパッシング、ストレージAPIのサンプル
 
 ## ディレクトリ構成
 
 ```
-├── public/
-│   └── sidepanel.html   # サイドパネルのHTML
-├── src/
 └── assets/
 │   └── icons/
 │   │   ├── source/      # アイコンのソースファイル
 │   │   └── build/       # svgファイルから生成したアイコン
+├── public/
+│   └── sidepanel.html   # サイドパネルのHTML
+├── src/
 │   ├── background/      # バックグラウンドスクリプト
 │   │   └── background.ts
 │   ├── contentScript/   # コンテンツスクリプト
@@ -30,6 +31,7 @@ TypeScriptとReactを使用したChrome拡張機能のテンプレートプロ�
 │   └── types/           # 型定義
 │       └── index.ts
 ├── dist/                # ビルド出力（git管理外）
+├-- node_modules/        # 依存パッケージ (git管理外)
 ├── manifest.json        # 拡張機能マニフェスト
 ├── webpack.config.js    # Webpack設定
 ├── tsconfig.json        # TypeScript設定
