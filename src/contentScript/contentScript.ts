@@ -11,9 +11,12 @@ interface DOMElement {
 
 let highlightedElement: HTMLElement | null = null;
 let previewElement: HTMLElement | null = null;
-let messageListener: ((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => void) | null = null;
 let clickHandler: ((event: Event) => void) | null = null;
 let isActive = false;
+
+function debugLog(message: string, ...args: any[]) {
+  console.log(`[Content Script] ${message}`, ...args);
+}
 
 function serializeDOMElement(element: Element, currentPath: number[] = []): DOMElement {
   const serialized: DOMElement = {
@@ -63,13 +66,13 @@ function findElementByPath(path: number[]): Element | null {
       if (index >= 0 && index < elements.length) {
         element = elements[index];
       } else {
-        console.error('Invalid path index:', index);
+        console.error('[Content Script] Invalid path index:', index);
         return null;
       }
     }
     return element;
   } catch (error) {
-    console.error('Error finding element:', error);
+    console.error('[Content Script] Error finding element:', error);
     return null;
   }
 }
@@ -139,6 +142,17 @@ function getElementPath(element: Element): number[] {
   return path;
 }
 
+function sendDOMUpdate(element: Element, path: number[]) {
+  try {
+    chrome.runtime.sendMessage({
+      type: 'DOM_ELEMENT_UPDATE',
+      element: serializeDOMElement(element, path)
+    });
+  } catch (error) {
+    console.error('[Content Script] Error sending DOM update:', error);
+  }
+}
+
 function handleClick(event: Event) {
   if (!isActive) return;
 
@@ -148,115 +162,118 @@ function handleClick(event: Event) {
     
     const element = event.target;
     highlightElement(element);
-    
     const path = getElementPath(element);
-    
-    chrome.runtime.sendMessage({
-      type: 'DOM_ELEMENT_UPDATE',
-      element: serializeDOMElement(element, path)
-    });
+    sendDOMUpdate(element, path);
   }
 }
 
 function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
-  console.log('[Content Script] Received message:', message.type);
+  debugLog('Received message:', message.type);
   
-  switch (message.type) {
-    case 'ACTIVATE_EXTENSION': {
-      console.log('[Content Script] Activating extension for this tab');
-      if (!isActive) {
+  try {
+    switch (message.type) {
+      case 'ACTIVATE_EXTENSION': {
+        debugLog('Activating extension');
         isActive = true;
         attachEventListeners();
-        // Send initial DOM structure after activation
-        const rootElement = serializeDOMElement(document.documentElement);
-        chrome.runtime.sendMessage({
-          type: 'DOM_ELEMENT_UPDATE',
-          element: rootElement
-        });
+        sendDOMUpdate(document.documentElement, []);
+        sendResponse({ success: true });
+        break;
       }
-      break;
-    }
 
-    case 'DEACTIVATE_EXTENSION': {
-      console.log('[Content Script] Deactivating extension for this tab');
-      cleanup();
-      break;
-    }
-
-    case 'GET_INITIAL_DOM': {
-      if (!isActive) return;
-      const rootElement = serializeDOMElement(document.documentElement);
-      chrome.runtime.sendMessage({
-        type: 'DOM_ELEMENT_UPDATE',
-        element: rootElement
-      });
-      break;
-    }
-
-    case 'SELECT_ELEMENT': {
-      if (!isActive) return;
-      const element = findElementByPath(message.path);
-      if (element instanceof HTMLElement) {
-        highlightElement(element);
-        chrome.runtime.sendMessage({
-          type: 'DOM_ELEMENT_UPDATE',
-          element: serializeDOMElement(element, message.path)
-        });
+      case 'DEACTIVATE_EXTENSION': {
+        debugLog('Deactivating extension');
+        cleanup();
+        sendResponse({ success: true });
+        break;
       }
-      break;
-    }
 
-    case 'PREVIEW_ELEMENT': {
-      if (!isActive) return;
-      const element = findElementByPath(message.path);
-      if (element instanceof HTMLElement) {
-        previewHighlight(element);
+      case 'GET_INITIAL_DOM': {
+        if (!isActive) {
+          sendResponse({ success: false, error: 'Extension not active' });
+          return false;
+        }
+        sendDOMUpdate(document.documentElement, []);
+        sendResponse({ success: true });
+        break;
       }
-      break;
-    }
-      
-    case 'CLEAR_PREVIEW': {
-      if (!isActive) return;
-      removePreview();
-      if (highlightedElement) {
-        highlightElement(highlightedElement);
+
+      case 'SELECT_ELEMENT': {
+        if (!isActive) {
+          sendResponse({ success: false, error: 'Extension not active' });
+          return false;
+        }
+        const element = findElementByPath(message.path);
+        if (element instanceof HTMLElement) {
+          highlightElement(element);
+          sendDOMUpdate(element, message.path);
+        }
+        sendResponse({ success: true });
+        break;
       }
-      break;
+
+      case 'PREVIEW_ELEMENT': {
+        if (!isActive) {
+          sendResponse({ success: false, error: 'Extension not active' });
+          return false;
+        }
+        const element = findElementByPath(message.path);
+        if (element instanceof HTMLElement) {
+          previewHighlight(element);
+        }
+        sendResponse({ success: true });
+        break;
+      }
+        
+      case 'CLEAR_PREVIEW': {
+        if (!isActive) {
+          sendResponse({ success: false, error: 'Extension not active' });
+          return false;
+        }
+        removePreview();
+        if (highlightedElement) {
+          highlightElement(highlightedElement);
+        }
+        sendResponse({ success: true });
+        break;
+      }
+        
+      case 'CLEANUP_EXTENSION': {
+        debugLog('Cleaning up extension');
+        cleanup();
+        sendResponse({ success: true });
+        break;
+      }
+
+      default: {
+        console.warn('[Content Script] Unknown message type:', message.type);
+        sendResponse({ success: false, error: 'Unknown message type' });
+      }
     }
-      
-    case 'CLEANUP_EXTENSION': {
-      console.log('[Content Script] Received cleanup request');
-      cleanup();
-      sendResponse({ success: true });
-      break;
-    }
+  } catch (error) {
+    console.error('[Content Script] Error handling message:', error);
+    sendResponse({ success: false, error: String(error) });
   }
 
-  return true;
+  return false; // return sync response
 }
 
 function attachEventListeners() {
-  console.log('[Content Script] Attaching event listeners');
+  debugLog('Attaching event listeners');
 
-  // Store references to event handlers
   clickHandler = handleClick;
-
-  // Add event listeners
   document.addEventListener('click', clickHandler, true);
   window.addEventListener('pagehide', cleanup);
   window.addEventListener('visibilitychange', handleVisibilityChange);
   window.addEventListener('beforeunload', cleanup);
 
-  // Create a connection to the extension
   const port = chrome.runtime.connect({ name: 'content-script-connection' });
-  
-  // Listen for disconnection
   port.onDisconnect.addListener(() => {
-    console.log('[Content Script] Port disconnected');
+    debugLog('Port disconnected');
     cleanup();
   });
 
-  console.log('[Content Script] Event listeners attached');
+  debugLog('Event listeners attached');
 }
 
 function handleVisibilityChange() {
@@ -266,44 +283,36 @@ function handleVisibilityChange() {
 }
 
 function cleanup() {
-  console.log('[Content Script] Running cleanup');
+  debugLog('Running cleanup');
 
   try {
     isActive = false;
 
-    // Remove visual highlights
     if (highlightedElement || previewElement) {
       removeHighlight();
       removePreview();
-      console.log('[Content Script] Removed highlights');
     }
 
-    // Remove click handler
     if (clickHandler) {
       document.removeEventListener('click', clickHandler, true);
       clickHandler = null;
-      console.log('[Content Script] Removed click handler');
     }
 
-    // Remove other event listeners
     window.removeEventListener('pagehide', cleanup);
     window.removeEventListener('visibilitychange', handleVisibilityChange);
     window.removeEventListener('beforeunload', cleanup);
-    console.log('[Content Script] Removed window event listeners');
 
   } catch (error) {
     console.error('[Content Script] Error during cleanup:', error);
   }
 
-  console.log('[Content Script] Cleanup complete');
+  debugLog('Cleanup complete');
 }
 
 function initialize() {
-  console.log('[Content Script] Initializing');
-  // Only set up message listener initially
-  messageListener = handleMessage;
-  chrome.runtime.onMessage.addListener(messageListener);
-  console.log('[Content Script] Initialization complete - awaiting activation');
+  debugLog('Initializing');
+  chrome.runtime.onMessage.addListener(handleMessage);
+  debugLog('Initialization complete - awaiting activation');
 }
 
 // Initialize the content script

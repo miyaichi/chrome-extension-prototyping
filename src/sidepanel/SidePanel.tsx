@@ -13,8 +13,26 @@ interface DOMElement {
 }
 
 function debugLog(message: string, ...args: any[]) {
-  console.log(`[DOM Inspector Panel] ${message}`, ...args);
+  console.log(`[Side Panel] ${message}`, ...args);
 }
+
+// Chrome messaging utility
+const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
+  try {
+    return await new Promise((resolve, reject) => {
+      chrome.tabs.sendMessage(tabId, message, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  } catch (error) {
+    debugLog('Error sending message:', error);
+    throw error;
+  }
+};
 
 const SidePanel: React.FC = () => {
   const [currentElement, setCurrentElement] = useState<DOMElement | null>(null);
@@ -22,20 +40,15 @@ const SidePanel: React.FC = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback(async () => {
     debugLog('Running cleanup');
-    if (activeTabId) {
-      chrome.tabs.sendMessage(
-        activeTabId, 
-        { type: 'CLEANUP_EXTENSION' },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            debugLog('Error during cleanup:', chrome.runtime.lastError);
-          } else {
-            debugLog('Cleanup completed successfully:', response);
-          }
-        }
-      );
+    if (!activeTabId) return;
+
+    try {
+      const response = await sendTabMessage(activeTabId, { type: 'CLEANUP_EXTENSION' });
+      debugLog('Cleanup completed successfully:', response);
+    } catch (error) {
+      debugLog('Error during cleanup:', error);
     }
   }, [activeTabId]);
 
@@ -46,7 +59,7 @@ const SidePanel: React.FC = () => {
     }
   }, [cleanup]);
 
-  const handleBeforeUnload = useCallback((event: BeforeUnloadEvent) => {
+  const handleBeforeUnload = useCallback(() => {
     debugLog('beforeunload event triggered');
     cleanup();
   }, [cleanup]);
@@ -55,21 +68,25 @@ const SidePanel: React.FC = () => {
     debugLog('Initializing side panel');
     let isComponentMounted = true;
     
-    // Get the active tab ID
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!isComponentMounted) return;
-      
-      if (tabs[0]?.id) {
-        debugLog('Active tab ID:', tabs[0].id);
-        setActiveTabId(tabs[0].id);
+    // Initialize active tab and DOM structure
+    const initializeSidePanel = async () => {
+      try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!isComponentMounted || !tabs[0]?.id) return;
         
-        // Request initial DOM structure
-        chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_INITIAL_DOM' })
-          .catch(error => debugLog('Error getting initial DOM:', error));
+        const tabId = tabs[0].id;
+        debugLog('Active tab ID:', tabId);
+        setActiveTabId(tabId);
+        
+        await sendTabMessage(tabId, { type: 'GET_INITIAL_DOM' });
+      } catch (error) {
+        debugLog('Error initializing side panel:', error);
       }
-    });
+    };
 
-    // Listen for DOM updates from content script
+    initializeSidePanel();
+
+    // Message listener
     const messageListener = (
       message: any,
       sender: chrome.runtime.MessageSender,
@@ -79,19 +96,19 @@ const SidePanel: React.FC = () => {
       
       if (message.type === 'DOM_ELEMENT_UPDATE' && isComponentMounted) {
         setCurrentElement(message.element);
-        sendResponse({ received: true });
-        return false;
       }
-      return false;
+      // Always send a response
+      sendResponse({ received: true });
+      return false; // 同期レスポンスを示す
     };
 
     chrome.runtime.onMessage.addListener(messageListener);
 
-    // Add event listeners
+    // Event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Cleanup on unmount
+    // Cleanup
     return () => {
       debugLog('Cleaning up side panel');
       isComponentMounted = false;
@@ -102,94 +119,95 @@ const SidePanel: React.FC = () => {
     };
   }, [cleanup, handleBeforeUnload, handleVisibilityChange]);
 
-  // Navigate to the clicked child element
-  const navigateToChild = (childElement: DOMElement) => {
-    debugLog('Navigating to child element:', childElement);
-    debugLog('Child element path:', childElement.path);
-
+  const navigateToChild = async (childElement: DOMElement) => {
     if (!activeTabId) {
       debugLog('No active tab ID available');
       return;
     }
 
-    if (currentElement) {
-      setElementStack((prev) => [...prev, currentElement]);
+    try {
+      debugLog('Navigating to child element:', childElement);
+      await sendTabMessage(activeTabId, {
+        type: 'SELECT_ELEMENT',
+        path: childElement.path
+      });
+      
+      if (currentElement) {
+        setElementStack((prev) => [...prev, currentElement]);
+      }
+      setCurrentElement(childElement);
+    } catch (error) {
+      debugLog('Error navigating to child:', error);
     }
-    setCurrentElement(childElement);
-
-    chrome.tabs.sendMessage(activeTabId, {
-      type: 'SELECT_ELEMENT',
-      path: childElement.path
-    }).catch(error => {
-      debugLog('Error sending selection message:', error);
-    });
   };
 
-  // Preview the child element on hover
-  const previewChildElement = (childElement: DOMElement) => {
+  const previewChildElement = async (childElement: DOMElement) => {
     if (!activeTabId) return;
     
-    debugLog('Previewing child element:', childElement);
-    chrome.tabs.sendMessage(activeTabId, {
-      type: 'PREVIEW_ELEMENT',
-      path: childElement.path
-    }).catch(error => {
-      debugLog('Error sending preview message:', error);
-    });
+    try {
+      debugLog('Previewing child element:', childElement);
+      await sendTabMessage(activeTabId, {
+        type: 'PREVIEW_ELEMENT',
+        path: childElement.path
+      });
+    } catch (error) {
+      debugLog('Error previewing child:', error);
+    }
   };
 
-  // Navigate to the parent element
-  const navigateToParent = () => {
+  const navigateToParent = async () => {
     if (!activeTabId || !currentElement || currentElement.path.length <= 1) {
       debugLog('Cannot navigate to parent - no parent element available');
       return;
     }
 
-    debugLog('Navigating to parent element');
-    const parentPath = currentElement.path.slice(0, -1);
-
-    setElementStack((prev) => [...prev, currentElement]);
-    
-    chrome.tabs.sendMessage(activeTabId, {
-      type: 'SELECT_ELEMENT',
-      path: parentPath
-    }).catch(error => {
-      debugLog('Error sending parent navigation message:', error);
-    });
+    try {
+      debugLog('Navigating to parent element');
+      const parentPath = currentElement.path.slice(0, -1);
+      
+      await sendTabMessage(activeTabId, {
+        type: 'SELECT_ELEMENT',
+        path: parentPath
+      });
+      
+      setElementStack((prev) => [...prev, currentElement]);
+    } catch (error) {
+      debugLog('Error navigating to parent:', error);
+    }
   };
-  
-  // Clear the child element preview
-  const clearElementPreview = () => {
+
+  const clearElementPreview = async () => {
     if (!activeTabId) return;
 
-    chrome.tabs.sendMessage(activeTabId, {
-      type: 'CLEAR_PREVIEW'
-    }).catch(error => {
-      debugLog('Error sending clear preview message:', error);
-    });
+    try {
+      await sendTabMessage(activeTabId, {
+        type: 'CLEAR_PREVIEW'
+      });
+    } catch (error) {
+      debugLog('Error clearing preview:', error);
+    }
   };
 
-  // Undo the last navigation
-  const navigateBack = () => {
+  const navigateBack = async () => {
     if (!activeTabId) {
       debugLog('No active tab ID available');
       return;
     }
 
-    debugLog('Navigating back');
     const prevElement = elementStack[elementStack.length - 1];
-    
-    if (prevElement) {
-      debugLog('Previous element:', prevElement);
-      setElementStack((prev) => prev.slice(0, -1));
-      setCurrentElement(prevElement);
+    if (!prevElement) return;
 
-      chrome.tabs.sendMessage(activeTabId, {
+    try {
+      debugLog('Navigating back');
+      await sendTabMessage(activeTabId, {
         type: 'SELECT_ELEMENT',
         path: prevElement.path
-      }).catch(error => {
-        debugLog('Error sending back navigation message:', error);
       });
+      
+      setElementStack((prev) => prev.slice(0, -1));
+      setCurrentElement(prevElement);
+    } catch (error) {
+      debugLog('Error navigating back:', error);
     }
   };
 
