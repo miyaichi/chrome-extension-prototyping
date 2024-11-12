@@ -94,8 +94,7 @@ npm run build
 
 ```json
 {
-  "permissions": [
-    "storage", "sidePanel"
+   "permissions": ["activeTab", "scripting", "storage", "sidePanel"
     // 必要な権限を追加
   ],
   "content_scripts": [
