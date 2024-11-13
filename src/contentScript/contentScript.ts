@@ -5,6 +5,24 @@
 
 import { DOMElement } from '../types';
 
+// Style constants
+const STYLES = {
+  HIGHLIGHT: {
+    outline: '2px solid #4CAF50',
+    outlineOffset: '-2px'
+  },
+  PREVIEW: {
+    outline: '2px dashed #4CAF50',
+    outlineOffset: '-2px'
+  },
+  NONE: {
+    outline: '',
+    outlineOffset: ''
+  }
+} as const;
+const HIGHLIGHT_COLOR_RGB = 'rgb(76, 175, 80)'; // #4CAF50
+const STYLE_CHECK_INTERVAL = 2000; // ms
+
 // State variables
 let highlightedElement: HTMLElement | null = null;
 let previewElement: HTMLElement | null = null;
@@ -100,12 +118,21 @@ function findElementByPath(path: number[]): Element | null {
 }
 
 /**
+ * Apply element styles
+ * @param element - Element to apply style to
+ * @param styles - Applied style
+ */
+function applyStyles(element: HTMLElement, styles: typeof STYLES[keyof typeof STYLES]): void {
+  element.style.outline = styles.outline;
+  element.style.outlineOffset = styles.outlineOffset;
+}
+
+/**
  * Removes highlight styling from the currently highlighted element
  */
 function removeHighlight(): void {
   if (highlightedElement) {
-    highlightedElement.style.outline = '';
-    highlightedElement.style.outlineOffset = '';
+    applyStyles(highlightedElement, STYLES.NONE);
     highlightedElement = null;
   }
 }
@@ -115,8 +142,7 @@ function removeHighlight(): void {
  */
 function removePreview(): void {
   if (previewElement) {
-    previewElement.style.outline = '';
-    previewElement.style.outlineOffset = '';
+    applyStyles(previewElement, STYLES.NONE);
     previewElement = null;
   }
 }
@@ -130,8 +156,7 @@ function previewHighlight(element: HTMLElement): void {
 
   removePreview();
   previewElement = element;
-  element.style.outline = '2px dashed #4CAF50';
-  element.style.outlineOffset = '-2px';
+  applyStyles(element, STYLES.PREVIEW);
 }
 
 /**
@@ -144,8 +169,7 @@ function highlightElement(element: HTMLElement): void {
   removeHighlight();
   removePreview();
   highlightedElement = element;
-  element.style.outline = '2px solid #4CAF50';
-  element.style.outlineOffset = '-2px';
+  applyStyles(element, STYLES.HIGHLIGHT);
   
   element.scrollIntoView({
     behavior: 'smooth',
@@ -386,6 +410,26 @@ function initialize(): void {
   contentScriptDebugLog('Initializing');
   chrome.runtime.onMessage.addListener(handleMessage);
   contentScriptDebugLog('Initialization complete - awaiting activation');
+
+  // Check the style of the highlighted element egularly.
+  setInterval(() => {
+    if (!isActive || !highlightedElement) return;
+
+    const computedStyle = window.getComputedStyle(highlightedElement);
+    const hasHighlight = computedStyle.outline.includes(HIGHLIGHT_COLOR_RGB);
+
+    if (!hasHighlight) {
+      console.warn('[Style Monitor] Highlight style lost:', {
+        element: highlightedElement.tagName,
+        id: highlightedElement.id,
+        currentOutline: computedStyle.outline,
+        timestamp: new Date().toISOString()
+      });
+
+      // Reapply style
+      applyStyles(highlightedElement, STYLES.HIGHLIGHT);
+    }
+  }, STYLE_CHECK_INTERVAL);
 }
 
 // Initialize the content script
