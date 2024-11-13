@@ -1,5 +1,4 @@
 // src/background/background.ts
-
 let activeTabId: number | null = null;
 
 function backgroundDebugLog(message: string, ...args: any[]) {
@@ -16,7 +15,7 @@ chrome.sidePanel
     enabled: true,
     path: 'sidepanel.html'
   })
-  .catch((error) => console.error('[Background] Error setting up side panel:', error));
+  .catch((error) => backgroundErrorLog('Error setting up side panel:', error));
 
 // When the extension is installed
 chrome.runtime.onInstalled.addListener(() => {
@@ -37,17 +36,17 @@ chrome.action.onClicked.addListener((tab) => {
   if (activeTabId && activeTabId !== tab.id) {
     backgroundDebugLog('Deactivating previous tab:', activeTabId);
     chrome.tabs.sendMessage(activeTabId, { type: 'DEACTIVATE_EXTENSION' })
-      .catch(error => console.error('[Background] deactivating previous tab:', error));
+      .catch(error => backgroundErrorLog('deactivating previous tab:', error));
   }
 
   // Activate new tab
   activeTabId = tab.id;
   chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_EXTENSION' })
-    .catch(error => console.error('[Background] activating new tab:', error));
+    .catch(error => backgroundErrorLog('activating new tab:', error));
   
   // Open the side panel
   chrome.sidePanel.open({ tabId: tab.id })
-    .catch(error => console.error('[Background] Error opening side panel:', error));
+    .catch(error => backgroundErrorLog('Error opening side panel:', error));
 });
 
 // Handle tab removal
@@ -69,7 +68,7 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onDisconnect.addListener(() => {
     backgroundDebugLog('Port disconnected:', port.name);
     if (chrome.runtime.lastError) {
-      console.error('[Background] Port error:', chrome.runtime.lastError);
+      backgroundErrorLog('Port error:', chrome.runtime.lastError);
     }
   });
 });

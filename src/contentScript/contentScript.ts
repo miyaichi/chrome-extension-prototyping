@@ -1,5 +1,4 @@
 // src/contentScript/contentScript.ts
-
 interface DOMElement {
   tag: string;
   id?: string;
@@ -16,6 +15,10 @@ let isActive = false;
 
 function contentScriptDebugLog(message: string, ...args: any[]) {
   console.log(`[Content Script] ${message}`, ...args);
+}
+
+function contentScriptErrorLog(message: string, ...args: any[]) {
+  console.error(`[Content Script] ${message}`, ...args);
 }
 
 function serializeDOMElement(element: Element, currentPath: number[] = []): DOMElement {
@@ -66,13 +69,13 @@ function findElementByPath(path: number[]): Element | null {
       if (index >= 0 && index < elements.length) {
         element = elements[index];
       } else {
-        console.error('[Content Script] Invalid path index:', index);
+        contentScriptErrorLog('Invalid path index:', index);
         return null;
       }
     }
     return element;
   } catch (error) {
-    console.error('[Content Script] Error finding element:', error);
+    contentScriptErrorLog('Error finding element:', error);
     return null;
   }
 }
@@ -149,7 +152,7 @@ function sendDOMUpdate(element: Element, path: number[]) {
       element: serializeDOMElement(element, path)
     });
   } catch (error) {
-    console.error('[Content Script] Error sending DOM update:', error);
+    contentScriptErrorLog('Error sending DOM update:', error);
   }
 }
 
@@ -251,7 +254,7 @@ function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendR
       }
     }
   } catch (error) {
-    console.error('[Content Script] Error handling message:', error);
+    contentScriptErrorLog('Error handling message:', error);
     sendResponse({ success: false, error: String(error) });
   }
 
@@ -303,7 +306,7 @@ function cleanup() {
     window.removeEventListener('beforeunload', cleanup);
 
   } catch (error) {
-    console.error('[Content Script] Error during cleanup:', error);
+    contentScriptErrorLog('Error during cleanup:', error);
   }
 
   contentScriptDebugLog('Cleanup complete');

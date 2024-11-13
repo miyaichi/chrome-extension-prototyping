@@ -33,7 +33,7 @@ const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
       });
     });
   } catch (error) {
-    sidePanelDebugLog('Error sending message:', error);
+    sidePanelErrorLog('sending message:', error);
     throw error;
   }
 };
@@ -52,7 +52,7 @@ const SidePanel: React.FC = () => {
       const response = await sendTabMessage(activeTabId, { type: 'CLEANUP_EXTENSION' });
       sidePanelDebugLog('Cleanup completed successfully:', response);
     } catch (error) {
-      sidePanelDebugLog('Error during cleanup:', error);
+      sidePanelErrorLog('during cleanup:', error);
     }
   }, [activeTabId]);
 
@@ -84,7 +84,7 @@ const SidePanel: React.FC = () => {
         
         await sendTabMessage(tabId, { type: 'GET_INITIAL_DOM' });
       } catch (error) {
-        sidePanelDebugLog('Error initializing side panel:', error);
+        sidePanelErrorLog('initializing side panel:', error);
       }
     };
 
@@ -141,7 +141,7 @@ const SidePanel: React.FC = () => {
       }
       setCurrentElement(childElement);
     } catch (error) {
-      sidePanelDebugLog('Error navigating to child:', error);
+      sidePanelErrorLog('navigating to child:', error);
     }
   };
 
@@ -155,7 +155,7 @@ const SidePanel: React.FC = () => {
         path: childElement.path
       });
     } catch (error) {
-      sidePanelDebugLog('Error previewing child:', error);
+      sidePanelErrorLog('previewing child:', error);
     }
   };
 
@@ -176,7 +176,7 @@ const SidePanel: React.FC = () => {
       
       setElementStack((prev) => [...prev, currentElement]);
     } catch (error) {
-      sidePanelDebugLog('Error navigating to parent:', error);
+      sidePanelErrorLog('navigating to parent:', error);
     }
   };
 
@@ -188,7 +188,7 @@ const SidePanel: React.FC = () => {
         type: 'CLEAR_PREVIEW'
       });
     } catch (error) {
-      sidePanelDebugLog('Error clearing preview:', error);
+      sidePanelErrorLog('clearing preview:', error);
     }
   };
 
@@ -211,7 +211,7 @@ const SidePanel: React.FC = () => {
       setElementStack((prev) => prev.slice(0, -1));
       setCurrentElement(prevElement);
     } catch (error) {
-      sidePanelDebugLog('Error navigating back:', error);
+      sidePanelErrorLog('navigating back:', error);
     }
   };
 
