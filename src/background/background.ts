@@ -2,6 +2,14 @@
 
 let activeTabId: number | null = null;
 
+function backgroundDebugLog(message: string, ...args: any[]) {
+  console.log(`[Background] ${message}`, ...args);
+}
+
+function backgroundErrorLog(message: string, ...args: any[]) {
+  console.error(`[Background] ${message}`, ...args);
+}
+
 // Set up the side panel to be displayed in the UI
 chrome.sidePanel
   .setOptions({
@@ -12,30 +20,30 @@ chrome.sidePanel
 
 // When the extension is installed
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('[Background] Extension installed');
+  backgroundDebugLog('Extension installed');
   chrome.action.setTitle({ title: 'Open DOM Inspector' });
 });
 
 // When the toolbar icon is clicked
 chrome.action.onClicked.addListener((tab) => {
   if (!tab.id) {
-    console.log('[Background] No tab ID available');
+    backgroundDebugLog('No tab ID available');
     return;
   }
 
-  console.log('[Background] Action clicked for tab:', tab.id);
+  backgroundDebugLog('Action clicked for tab:', tab.id);
   
   // Deactivate previous tab if exists
   if (activeTabId && activeTabId !== tab.id) {
-    console.log('[Background] Deactivating previous tab:', activeTabId);
+    backgroundDebugLog('Deactivating previous tab:', activeTabId);
     chrome.tabs.sendMessage(activeTabId, { type: 'DEACTIVATE_EXTENSION' })
-      .catch(error => console.log('[Background] Error deactivating previous tab:', error));
+      .catch(error => console.error('[Background] deactivating previous tab:', error));
   }
 
   // Activate new tab
   activeTabId = tab.id;
   chrome.tabs.sendMessage(tab.id, { type: 'ACTIVATE_EXTENSION' })
-    .catch(error => console.log('[Background] Error activating new tab:', error));
+    .catch(error => console.error('[Background] activating new tab:', error));
   
   // Open the side panel
   chrome.sidePanel.open({ tabId: tab.id })
@@ -44,7 +52,7 @@ chrome.action.onClicked.addListener((tab) => {
 
 // Handle tab removal
 chrome.tabs.onRemoved.addListener((tabId) => {
-  console.log('[Background] Tab removed:', tabId);
+  backgroundDebugLog('Tab removed:', tabId);
   if (tabId === activeTabId) {
     activeTabId = null;
   }
@@ -52,14 +60,14 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // Handle connections from content scripts
 chrome.runtime.onConnect.addListener((port) => {
-  console.log('[Background] New connection from:', port.name);
+  backgroundDebugLog('New connection from:', port.name);
 
   port.onMessage.addListener((message) => {
-    console.log('[Background] Received message from port:', message);
+    backgroundDebugLog('Received message from port:', message);
   });
 
   port.onDisconnect.addListener(() => {
-    console.log('[Background] Port disconnected:', port.name);
+    backgroundDebugLog('Port disconnected:', port.name);
     if (chrome.runtime.lastError) {
       console.error('[Background] Port error:', chrome.runtime.lastError);
     }
@@ -68,7 +76,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
 // Global message handler
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[Background] Received message:', message, 'from:', sender);
+  backgroundDebugLog('Received message:', message, 'from:', sender);
   sendResponse({ received: true });
   return false;
 });

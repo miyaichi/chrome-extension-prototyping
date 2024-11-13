@@ -14,7 +14,7 @@ let previewElement: HTMLElement | null = null;
 let clickHandler: ((event: Event) => void) | null = null;
 let isActive = false;
 
-function debugLog(message: string, ...args: any[]) {
+function contentScriptDebugLog(message: string, ...args: any[]) {
   console.log(`[Content Script] ${message}`, ...args);
 }
 
@@ -168,12 +168,12 @@ function handleClick(event: Event) {
 }
 
 function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
-  debugLog('Received message:', message.type);
+  contentScriptDebugLog('Received message:', message.type);
   
   try {
     switch (message.type) {
       case 'ACTIVATE_EXTENSION': {
-        debugLog('Activating extension');
+        contentScriptDebugLog('Activating extension');
         isActive = true;
         attachEventListeners();
         sendDOMUpdate(document.documentElement, []);
@@ -182,7 +182,7 @@ function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendR
       }
 
       case 'DEACTIVATE_EXTENSION': {
-        debugLog('Deactivating extension');
+        contentScriptDebugLog('Deactivating extension');
         cleanup();
         sendResponse({ success: true });
         break;
@@ -239,7 +239,7 @@ function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendR
       }
         
       case 'CLEANUP_EXTENSION': {
-        debugLog('Cleaning up extension');
+        contentScriptDebugLog('Cleaning up extension');
         cleanup();
         sendResponse({ success: true });
         break;
@@ -259,7 +259,7 @@ function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendR
 }
 
 function attachEventListeners() {
-  debugLog('Attaching event listeners');
+  contentScriptDebugLog('Attaching event listeners');
 
   clickHandler = handleClick;
   document.addEventListener('click', clickHandler, true);
@@ -269,11 +269,11 @@ function attachEventListeners() {
 
   const port = chrome.runtime.connect({ name: 'content-script-connection' });
   port.onDisconnect.addListener(() => {
-    debugLog('Port disconnected');
+    contentScriptDebugLog('Port disconnected');
     cleanup();
   });
 
-  debugLog('Event listeners attached');
+  contentScriptDebugLog('Event listeners attached');
 }
 
 function handleVisibilityChange() {
@@ -283,7 +283,7 @@ function handleVisibilityChange() {
 }
 
 function cleanup() {
-  debugLog('Running cleanup');
+  contentScriptDebugLog('Running cleanup');
 
   try {
     isActive = false;
@@ -306,13 +306,13 @@ function cleanup() {
     console.error('[Content Script] Error during cleanup:', error);
   }
 
-  debugLog('Cleanup complete');
+  contentScriptDebugLog('Cleanup complete');
 }
 
 function initialize() {
-  debugLog('Initializing');
+  contentScriptDebugLog('Initializing');
   chrome.runtime.onMessage.addListener(handleMessage);
-  debugLog('Initialization complete - awaiting activation');
+  contentScriptDebugLog('Initialization complete - awaiting activation');
 }
 
 // Initialize the content script

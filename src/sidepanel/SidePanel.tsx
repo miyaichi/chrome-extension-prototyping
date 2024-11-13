@@ -12,8 +12,12 @@ interface DOMElement {
   path: number[];
 }
 
-function debugLog(message: string, ...args: any[]) {
+function sidePanelDebugLog(message: string, ...args: any[]) {
   console.log(`[Side Panel] ${message}`, ...args);
+}
+
+function sidePanelErrorLog(message: string, ...args: any[]) {
+  console.error(`[Side Panel] ${message}`, ...args);
 }
 
 // Chrome messaging utility
@@ -29,7 +33,7 @@ const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
       });
     });
   } catch (error) {
-    debugLog('Error sending message:', error);
+    sidePanelDebugLog('Error sending message:', error);
     throw error;
   }
 };
@@ -41,31 +45,31 @@ const SidePanel: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
 
   const cleanup = useCallback(async () => {
-    debugLog('Running cleanup');
+    sidePanelDebugLog('Running cleanup');
     if (!activeTabId) return;
 
     try {
       const response = await sendTabMessage(activeTabId, { type: 'CLEANUP_EXTENSION' });
-      debugLog('Cleanup completed successfully:', response);
+      sidePanelDebugLog('Cleanup completed successfully:', response);
     } catch (error) {
-      debugLog('Error during cleanup:', error);
+      sidePanelDebugLog('Error during cleanup:', error);
     }
   }, [activeTabId]);
 
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === 'hidden') {
-      debugLog('Side panel hidden, running cleanup');
+      sidePanelDebugLog('Side panel hidden, running cleanup');
       cleanup();
     }
   }, [cleanup]);
 
   const handleBeforeUnload = useCallback(() => {
-    debugLog('beforeunload event triggered');
+    sidePanelDebugLog('beforeunload event triggered');
     cleanup();
   }, [cleanup]);
 
   useEffect(() => {
-    debugLog('Initializing side panel');
+    sidePanelDebugLog('Initializing side panel');
     let isComponentMounted = true;
     
     // Initialize active tab and DOM structure
@@ -75,12 +79,12 @@ const SidePanel: React.FC = () => {
         if (!isComponentMounted || !tabs[0]?.id) return;
         
         const tabId = tabs[0].id;
-        debugLog('Active tab ID:', tabId);
+        sidePanelDebugLog('Active tab ID:', tabId);
         setActiveTabId(tabId);
         
         await sendTabMessage(tabId, { type: 'GET_INITIAL_DOM' });
       } catch (error) {
-        debugLog('Error initializing side panel:', error);
+        sidePanelDebugLog('Error initializing side panel:', error);
       }
     };
 
@@ -92,14 +96,14 @@ const SidePanel: React.FC = () => {
       sender: chrome.runtime.MessageSender,
       sendResponse: (response?: any) => void
     ) => {
-      debugLog('Received message:', message);
+      sidePanelDebugLog('Received message:', message);
       
       if (message.type === 'DOM_ELEMENT_UPDATE' && isComponentMounted) {
         setCurrentElement(message.element);
       }
       // Always send a response
       sendResponse({ received: true });
-      return false; // 同期レスポンスを示す
+      return false; // Return false to indicate that the response will be sent asynchronously
     };
 
     chrome.runtime.onMessage.addListener(messageListener);
@@ -110,7 +114,7 @@ const SidePanel: React.FC = () => {
 
     // Cleanup
     return () => {
-      debugLog('Cleaning up side panel');
+      sidePanelDebugLog('Cleaning up side panel');
       isComponentMounted = false;
       chrome.runtime.onMessage.removeListener(messageListener);
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -121,12 +125,12 @@ const SidePanel: React.FC = () => {
 
   const navigateToChild = async (childElement: DOMElement) => {
     if (!activeTabId) {
-      debugLog('No active tab ID available');
+      sidePanelDebugLog('No active tab ID available');
       return;
     }
 
     try {
-      debugLog('Navigating to child element:', childElement);
+      sidePanelDebugLog('Navigating to child element:', childElement);
       await sendTabMessage(activeTabId, {
         type: 'SELECT_ELEMENT',
         path: childElement.path
@@ -137,7 +141,7 @@ const SidePanel: React.FC = () => {
       }
       setCurrentElement(childElement);
     } catch (error) {
-      debugLog('Error navigating to child:', error);
+      sidePanelDebugLog('Error navigating to child:', error);
     }
   };
 
@@ -145,24 +149,24 @@ const SidePanel: React.FC = () => {
     if (!activeTabId) return;
     
     try {
-      debugLog('Previewing child element:', childElement);
+      sidePanelDebugLog('Previewing child element:', childElement);
       await sendTabMessage(activeTabId, {
         type: 'PREVIEW_ELEMENT',
         path: childElement.path
       });
     } catch (error) {
-      debugLog('Error previewing child:', error);
+      sidePanelDebugLog('Error previewing child:', error);
     }
   };
 
   const navigateToParent = async () => {
     if (!activeTabId || !currentElement || currentElement.path.length <= 1) {
-      debugLog('Cannot navigate to parent - no parent element available');
+      sidePanelDebugLog('Cannot navigate to parent - no parent element available');
       return;
     }
 
     try {
-      debugLog('Navigating to parent element');
+      sidePanelDebugLog('Navigating to parent element');
       const parentPath = currentElement.path.slice(0, -1);
       
       await sendTabMessage(activeTabId, {
@@ -172,7 +176,7 @@ const SidePanel: React.FC = () => {
       
       setElementStack((prev) => [...prev, currentElement]);
     } catch (error) {
-      debugLog('Error navigating to parent:', error);
+      sidePanelDebugLog('Error navigating to parent:', error);
     }
   };
 
@@ -184,13 +188,13 @@ const SidePanel: React.FC = () => {
         type: 'CLEAR_PREVIEW'
       });
     } catch (error) {
-      debugLog('Error clearing preview:', error);
+      sidePanelDebugLog('Error clearing preview:', error);
     }
   };
 
   const navigateBack = async () => {
     if (!activeTabId) {
-      debugLog('No active tab ID available');
+      sidePanelDebugLog('No active tab ID available');
       return;
     }
 
@@ -198,7 +202,7 @@ const SidePanel: React.FC = () => {
     if (!prevElement) return;
 
     try {
-      debugLog('Navigating back');
+      sidePanelDebugLog('Navigating back');
       await sendTabMessage(activeTabId, {
         type: 'SELECT_ELEMENT',
         path: prevElement.path
@@ -207,7 +211,7 @@ const SidePanel: React.FC = () => {
       setElementStack((prev) => prev.slice(0, -1));
       setCurrentElement(prevElement);
     } catch (error) {
-      debugLog('Error navigating back:', error);
+      sidePanelDebugLog('Error navigating back:', error);
     }
   };
 
