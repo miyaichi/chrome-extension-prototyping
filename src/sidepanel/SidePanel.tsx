@@ -1,7 +1,8 @@
 // src/sidepanel/SidePanel.tsx
-import { ArrowUp, ChevronRight, Eye, Undo } from 'lucide-react';
+import { ArrowUp, Eye, Undo } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Tooltip } from 'react-tooltip';
+import DOMTreeView from './DOMTreeView';
 
 interface DOMElement {
   tag: string;
@@ -273,24 +274,12 @@ const SidePanel: React.FC = () => {
           {currentElement.children.length > 0 && (
             <div>
               <h3 className="font-semibold mb-2">Child Elements</h3>
-              <div className="space-y-1">
-                {currentElement.children.map((child, index) => (
-                  <button
-                    key={index}
-                    onClick={() => navigateToChild(child)}
-                    onMouseEnter={() => previewChildElement(child)}
-                    onMouseLeave={clearElementPreview}
-                    className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded flex items-center justify-between"
-                  >
-                    <span>
-                      {child.tag}
-                      {child.id && `#${child.id}`}
-                      {child.classes && child.classes.length > 0 && `.${child.classes[0]}`}
-                    </span>
-                    {child.children.length > 0 && <ChevronRight size={16} />}
-                  </button>
-                ))}
-              </div>
+              <DOMTreeView
+                element={currentElement}
+                onNodeSelect={navigateToChild}
+                onNodePreview={previewChildElement}
+                onClearPreview={clearElementPreview}
+              />
             </div>
           )}
         </div>
