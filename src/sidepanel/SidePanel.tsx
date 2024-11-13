@@ -1,27 +1,57 @@
-// src/sidepanel/SidePanel.tsx
+/**
+ * Side Panel component for DOM Inspector Chrome extension
+ * Provides a user interface for inspecting and navigating DOM elements
+ * @module SidePanel
+ */
+
 import { ArrowUp, Eye, Undo } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Tooltip } from 'react-tooltip';
 import DOMTreeView from './DOMTreeView';
 
+/**
+ * Represents a DOM element in the inspector's tree view
+ */
 interface DOMElement {
+  /** HTML tag name of the element */
   tag: string;
+  /** Element's ID attribute if present */
   id?: string;
+  /** Array of element's CSS classes */
   classes?: string[];
+  /** Combined text content of the element */
   textContent?: string;
+  /** Array of child elements */
   children: DOMElement[];
+  /** Array representing the element's path in the DOM tree */
   path: number[];
 }
 
-function sidePanelDebugLog(message: string, ...args: any[]) {
+/**
+ * Logs debug messages with side panel prefix
+ * @param message - Main message to log
+ * @param args - Additional arguments to log
+ */
+function sidePanelDebugLog(message: string, ...args: any[]): void {
   console.log(`[Side Panel] ${message}`, ...args);
 }
 
-function sidePanelErrorLog(message: string, ...args: any[]) {
+/**
+ * Logs error messages with side panel prefix
+ * @param message - Main error message to log
+ * @param args - Additional arguments to log
+ */
+function sidePanelErrorLog(message: string, ...args: any[]): void {
   console.error(`[Side Panel] ${message}`, ...args);
 }
 
-// Chrome messaging utility
+/**
+ * Sends a message to a specific tab and returns the response
+ * @param tabId - ID of the target tab
+ * @param message - Message to send
+ * @returns Promise resolving with the response
+ * @throws Error if message sending fails
+ */
 const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
   try {
     return await new Promise((resolve, reject) => {
@@ -39,12 +69,23 @@ const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
   }
 };
 
+/**
+ * Main side panel component for the DOM Inspector
+ * Manages the state and interaction with the inspected webpage
+ */
 const SidePanel: React.FC = () => {
+  /** Currently selected DOM element */
   const [currentElement, setCurrentElement] = useState<DOMElement | null>(null);
+  /** Stack of previously selected elements for navigation history */
   const [elementStack, setElementStack] = useState<DOMElement[]>([]);
+  /** Toggle for showing additional element details */
   const [showDetails, setShowDetails] = useState(false);
+  /** ID of the currently active tab */
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
 
+  /**
+   * Cleans up the extension state in the active tab
+   */
   const cleanup = useCallback(async () => {
     sidePanelDebugLog('Running cleanup');
     if (!activeTabId) return;
@@ -57,6 +98,9 @@ const SidePanel: React.FC = () => {
     }
   }, [activeTabId]);
 
+  /**
+   * Handles visibility change events for the side panel
+   */
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === 'hidden') {
       sidePanelDebugLog('Side panel hidden, running cleanup');
@@ -64,16 +108,24 @@ const SidePanel: React.FC = () => {
     }
   }, [cleanup]);
 
+  /**
+   * Handles beforeunload events
+   */
   const handleBeforeUnload = useCallback(() => {
     sidePanelDebugLog('beforeunload event triggered');
     cleanup();
   }, [cleanup]);
 
+  /**
+   * Main effect for initializing the side panel and setting up event listeners
+   */
   useEffect(() => {
     sidePanelDebugLog('Initializing side panel');
     let isComponentMounted = true;
     
-    // Initialize active tab and DOM structure
+    /**
+     * Initializes the active tab and DOM structure
+     */
     const initializeSidePanel = async () => {
       try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -91,7 +143,9 @@ const SidePanel: React.FC = () => {
 
     initializeSidePanel();
 
-    // Message listener
+    /**
+     * Handles messages from the content script
+     */
     const messageListener = (
       message: any,
       sender: chrome.runtime.MessageSender,
@@ -102,18 +156,14 @@ const SidePanel: React.FC = () => {
       if (message.type === 'DOM_ELEMENT_UPDATE' && isComponentMounted) {
         setCurrentElement(message.element);
       }
-      // Always send a response
       sendResponse({ received: true });
-      return false; // Return false to indicate that the response will be sent asynchronously
+      return false;
     };
 
     chrome.runtime.onMessage.addListener(messageListener);
-
-    // Event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Cleanup
     return () => {
       sidePanelDebugLog('Cleaning up side panel');
       isComponentMounted = false;
@@ -124,6 +174,10 @@ const SidePanel: React.FC = () => {
     };
   }, [cleanup, handleBeforeUnload, handleVisibilityChange]);
 
+  /**
+   * Navigates to and selects a child element
+   * @param childElement - Child element to navigate to
+   */
   const navigateToChild = async (childElement: DOMElement) => {
     if (!activeTabId) {
       sidePanelDebugLog('No active tab ID available');
@@ -146,6 +200,10 @@ const SidePanel: React.FC = () => {
     }
   };
 
+  /**
+   * Previews a child element by highlighting it
+   * @param childElement - Child element to preview
+   */
   const previewChildElement = async (childElement: DOMElement) => {
     if (!activeTabId) return;
     
@@ -160,6 +218,9 @@ const SidePanel: React.FC = () => {
     }
   };
 
+  /**
+   * Navigates to the parent of the current element
+   */
   const navigateToParent = async () => {
     if (!activeTabId || !currentElement || currentElement.path.length <= 1) {
       sidePanelDebugLog('Cannot navigate to parent - no parent element available');
@@ -181,6 +242,9 @@ const SidePanel: React.FC = () => {
     }
   };
 
+  /**
+   * Clears the preview highlight from elements
+   */
   const clearElementPreview = async () => {
     if (!activeTabId) return;
 
@@ -193,6 +257,9 @@ const SidePanel: React.FC = () => {
     }
   };
 
+  /**
+   * Navigates back to the previously selected element
+   */
   const navigateBack = async () => {
     if (!activeTabId) {
       sidePanelDebugLog('No active tab ID available');

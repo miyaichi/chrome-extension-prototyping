@@ -1,15 +1,33 @@
-// src/background/background.ts
+/**
+ * Background script for Chrome extension that manages extension state and messaging
+ * @module background
+ */
+
+/** ID of the currently active tab where the extension is running */
 let activeTabId: number | null = null;
 
-function backgroundDebugLog(message: string, ...args: any[]) {
+/**
+ * Logs debug messages with background script prefix
+ * @param message - Main message to log
+ * @param args - Additional arguments to log
+ */
+function backgroundDebugLog(message: string, ...args: any[]): void {
   console.log(`[Background] ${message}`, ...args);
 }
 
-function backgroundErrorLog(message: string, ...args: any[]) {
+/**
+ * Logs error messages with background script prefix
+ * @param message - Main error message to log
+ * @param args - Additional arguments to log
+ */
+function backgroundErrorLog(message: string, ...args: any[]): void {
   console.error(`[Background] ${message}`, ...args);
 }
 
-// Set up the side panel to be displayed in the UI
+/**
+ * Configures and initializes the extension's side panel
+ * Sets up the HTML path and enables the panel
+ */
 chrome.sidePanel
   .setOptions({
     enabled: true,
@@ -17,13 +35,20 @@ chrome.sidePanel
   })
   .catch((error) => backgroundErrorLog('Error setting up side panel:', error));
 
-// When the extension is installed
+/**
+ * Handles extension installation
+ * Sets up initial configuration and UI elements
+ */
 chrome.runtime.onInstalled.addListener(() => {
   backgroundDebugLog('Extension installed');
   chrome.action.setTitle({ title: 'Open DOM Inspector' });
 });
 
-// When the toolbar icon is clicked
+/**
+ * Handles clicks on the extension's toolbar icon
+ * Manages activation/deactivation of the extension in different tabs
+ * @param tab - The tab where the extension icon was clicked
+ */
 chrome.action.onClicked.addListener((tab) => {
   if (!tab.id) {
     backgroundDebugLog('No tab ID available');
@@ -49,7 +74,11 @@ chrome.action.onClicked.addListener((tab) => {
     .catch(error => backgroundErrorLog('Error opening side panel:', error));
 });
 
-// Handle tab removal
+/**
+ * Handles tab removal events
+ * Cleans up extension state when tabs are closed
+ * @param tabId - ID of the removed tab
+ */
 chrome.tabs.onRemoved.addListener((tabId) => {
   backgroundDebugLog('Tab removed:', tabId);
   if (tabId === activeTabId) {
@@ -57,14 +86,20 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   }
 });
 
-// Handle connections from content scripts
+/**
+ * Handles connections from content scripts
+ * Sets up message handling and disconnect cleanup for each connection
+ * @param port - The connection port from the content script
+ */
 chrome.runtime.onConnect.addListener((port) => {
   backgroundDebugLog('New connection from:', port.name);
 
+  // Handle messages received on this port
   port.onMessage.addListener((message) => {
     backgroundDebugLog('Received message from port:', message);
   });
 
+  // Handle port disconnection
   port.onDisconnect.addListener(() => {
     backgroundDebugLog('Port disconnected:', port.name);
     if (chrome.runtime.lastError) {
@@ -73,9 +108,20 @@ chrome.runtime.onConnect.addListener((port) => {
   });
 });
 
-// Global message handler
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+/**
+ * Global message handler for the extension
+ * Processes messages from content scripts and other extension components
+ * @param message - The message received
+ * @param sender - Information about the sender of the message
+ * @param sendResponse - Callback function to send a response
+ * @returns Boolean indicating if response will be sent asynchronously
+ */
+chrome.runtime.onMessage.addListener((
+  message: any,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: any) => void
+): boolean => {
   backgroundDebugLog('Received message:', message, 'from:', sender);
   sendResponse({ received: true });
-  return false;
+  return false; // Synchronous response
 });

@@ -1,26 +1,56 @@
-// src/contentScript/contentScript.ts
+/**
+ * Content script for Chrome extension that handles DOM element selection and highlighting
+ * @module contentScript
+ */
+
+/** 
+ * Represents a serialized DOM element with its properties and children
+ */
 interface DOMElement {
+  /** HTML tag name of the element */
   tag: string;
+  /** Element's ID attribute if present */
   id?: string;
+  /** Array of element's CSS classes */
   classes?: string[];
+  /** Combined text content of the element's direct text nodes */
   textContent?: string;
+  /** Array of child elements */
   children: DOMElement[];
+  /** Array representing the element's path in the DOM tree */
   path: number[];
 }
 
+// State variables
 let highlightedElement: HTMLElement | null = null;
 let previewElement: HTMLElement | null = null;
 let clickHandler: ((event: Event) => void) | null = null;
 let isActive = false;
 
-function contentScriptDebugLog(message: string, ...args: any[]) {
+/**
+ * Logs debug messages with content script prefix
+ * @param message - Main message to log
+ * @param args - Additional arguments to log
+ */
+function contentScriptDebugLog(message: string, ...args: any[]): void {
   console.log(`[Content Script] ${message}`, ...args);
 }
 
-function contentScriptErrorLog(message: string, ...args: any[]) {
+/**
+ * Logs error messages with content script prefix
+ * @param message - Main error message to log
+ * @param args - Additional arguments to log
+ */
+function contentScriptErrorLog(message: string, ...args: any[]): void {
   console.error(`[Content Script] ${message}`, ...args);
 }
 
+/**
+ * Serializes a DOM element into a plain object structure
+ * @param element - DOM element to serialize
+ * @param currentPath - Current path in the DOM tree
+ * @returns Serialized representation of the element
+ */
 function serializeDOMElement(element: Element, currentPath: number[] = []): DOMElement {
   const serialized: DOMElement = {
     tag: element.tagName.toLowerCase(),
@@ -55,6 +85,11 @@ function serializeDOMElement(element: Element, currentPath: number[] = []): DOME
   return serialized;
 }
 
+/**
+ * Finds a DOM element using a path array
+ * @param path - Array of indices representing the path to the element
+ * @returns The found element or null if not found
+ */
 function findElementByPath(path: number[]): Element | null {
   if (!path.length) return document.documentElement;
 
@@ -80,7 +115,10 @@ function findElementByPath(path: number[]): Element | null {
   }
 }
 
-function removeHighlight() {
+/**
+ * Removes highlight styling from the currently highlighted element
+ */
+function removeHighlight(): void {
   if (highlightedElement) {
     highlightedElement.style.outline = '';
     highlightedElement.style.outlineOffset = '';
@@ -88,7 +126,10 @@ function removeHighlight() {
   }
 }
 
-function removePreview() {
+/**
+ * Removes preview styling from the currently previewed element
+ */
+function removePreview(): void {
   if (previewElement) {
     previewElement.style.outline = '';
     previewElement.style.outlineOffset = '';
@@ -96,7 +137,11 @@ function removePreview() {
   }
 }
 
-function previewHighlight(element: HTMLElement) {
+/**
+ * Applies preview highlighting to an element
+ * @param element - Element to preview highlight
+ */
+function previewHighlight(element: HTMLElement): void {
   if (element === previewElement) return;
 
   removePreview();
@@ -105,7 +150,11 @@ function previewHighlight(element: HTMLElement) {
   element.style.outlineOffset = '-2px';
 }
 
-function highlightElement(element: HTMLElement) {
+/**
+ * Applies highlight styling to an element and scrolls it into view
+ * @param element - Element to highlight
+ */
+function highlightElement(element: HTMLElement): void {
   if (element === highlightedElement) return;
 
   removeHighlight();
@@ -121,6 +170,11 @@ function highlightElement(element: HTMLElement) {
   });
 }
 
+/**
+ * Gets the path to an element in the DOM tree
+ * @param element - Element to get path for
+ * @returns Array of indices representing the path
+ */
 function getElementPath(element: Element): number[] {
   const path: number[] = [];
   let currentElement: Element | null = element;
@@ -145,7 +199,12 @@ function getElementPath(element: Element): number[] {
   return path;
 }
 
-function sendDOMUpdate(element: Element, path: number[]) {
+/**
+ * Sends DOM element update to the extension
+ * @param element - Element that was updated
+ * @param path - Path to the element
+ */
+function sendDOMUpdate(element: Element, path: number[]): void {
   try {
     chrome.runtime.sendMessage({
       type: 'DOM_ELEMENT_UPDATE',
@@ -156,7 +215,11 @@ function sendDOMUpdate(element: Element, path: number[]) {
   }
 }
 
-function handleClick(event: Event) {
+/**
+ * Handles click events on the page
+ * @param event - Click event
+ */
+function handleClick(event: Event): void {
   if (!isActive) return;
 
   if (event.target instanceof HTMLElement) {
@@ -170,7 +233,18 @@ function handleClick(event: Event) {
   }
 }
 
-function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
+/**
+ * Handles messages from the extension
+ * @param message - Message received
+ * @param sender - Sender of the message
+ * @param sendResponse - Function to send response
+ * @returns Boolean indicating if response is handled synchronously
+ */
+function handleMessage(
+  message: any,
+  sender: chrome.runtime.MessageSender,
+  sendResponse: (response?: any) => void
+): boolean {
   contentScriptDebugLog('Received message:', message.type);
   
   try {
@@ -261,7 +335,10 @@ function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendR
   return false; // return sync response
 }
 
-function attachEventListeners() {
+/**
+ * Attaches event listeners for the extension
+ */
+function attachEventListeners(): void {
   contentScriptDebugLog('Attaching event listeners');
 
   clickHandler = handleClick;
@@ -279,13 +356,19 @@ function attachEventListeners() {
   contentScriptDebugLog('Event listeners attached');
 }
 
-function handleVisibilityChange() {
+/**
+ * Handles visibility change events
+ */
+function handleVisibilityChange(): void {
   if (document.visibilityState === 'hidden') {
     cleanup();
   }
 }
 
-function cleanup() {
+/**
+ * Cleans up the extension state and removes event listeners
+ */
+function cleanup(): void {
   contentScriptDebugLog('Running cleanup');
 
   try {
@@ -312,7 +395,10 @@ function cleanup() {
   contentScriptDebugLog('Cleanup complete');
 }
 
-function initialize() {
+/**
+ * Initializes the content script
+ */
+function initialize(): void {
   contentScriptDebugLog('Initializing');
   chrome.runtime.onMessage.addListener(handleMessage);
   contentScriptDebugLog('Initialization complete - awaiting activation');
