@@ -5,20 +5,7 @@
 
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import React, { useState } from 'react';
-
-/**
- * Props for the DOMTreeView component
- */
-interface DOMTreeViewProps {
-  /** Root DOM element to display */
-  element: DOMElement;
-  /** Callback function when a node is selected */
-  onNodeSelect: (element: DOMElement) => void;
-  /** Callback function when mouse enters a node */
-  onNodePreview: (element: DOMElement) => void;
-  /** Callback function when mouse leaves a node */
-  onClearPreview: () => void;
-}
+import { DOMTreeViewProps, TreeNodeProps } from '../types';
 
 /**
  * A component that displays a hierarchical view of DOM elements
@@ -40,12 +27,7 @@ const DOMTreeView: React.FC<DOMTreeViewProps> = ({
    * @param props - TreeNode props
    * @returns React component
    */
-  const TreeNode: React.FC<{ 
-    /** DOM element to display */ 
-    node: DOMElement; 
-    /** Indentation level of the node (default: 0) */
-    level?: number 
-  }> = ({ node, level = 0 }) => {
+  const TreeNode: React.FC<TreeNodeProps> = ({ node, level = 0 }) => {
     // State for tracking if the node is expanded
     const [isOpen, setIsOpen] = useState(false);
     const hasChildren = node.children && node.children.length > 0;
