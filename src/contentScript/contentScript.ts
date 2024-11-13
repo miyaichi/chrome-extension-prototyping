@@ -3,23 +3,7 @@
  * @module contentScript
  */
 
-/** 
- * Represents a serialized DOM element with its properties and children
- */
-interface DOMElement {
-  /** HTML tag name of the element */
-  tag: string;
-  /** Element's ID attribute if present */
-  id?: string;
-  /** Array of element's CSS classes */
-  classes?: string[];
-  /** Combined text content of the element's direct text nodes */
-  textContent?: string;
-  /** Array of child elements */
-  children: DOMElement[];
-  /** Array representing the element's path in the DOM tree */
-  path: number[];
-}
+import { DOMElement } from '../types';
 
 // State variables
 let highlightedElement: HTMLElement | null = null;

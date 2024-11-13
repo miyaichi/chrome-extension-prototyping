@@ -7,25 +7,8 @@
 import { ArrowUp, Eye, Undo } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Tooltip } from 'react-tooltip';
+import { DOMElement } from '../types';
 import DOMTreeView from './DOMTreeView';
-
-/**
- * Represents a DOM element in the inspector's tree view
- */
-interface DOMElement {
-  /** HTML tag name of the element */
-  tag: string;
-  /** Element's ID attribute if present */
-  id?: string;
-  /** Array of element's CSS classes */
-  classes?: string[];
-  /** Combined text content of the element */
-  textContent?: string;
-  /** Array of child elements */
-  children: DOMElement[];
-  /** Array representing the element's path in the DOM tree */
-  path: number[];
-}
 
 /**
  * Logs debug messages with side panel prefix
