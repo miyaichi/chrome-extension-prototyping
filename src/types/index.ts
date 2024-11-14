@@ -32,7 +32,6 @@ export interface Settings {
  * @property {string} tag - HTML tag name of the element (e.g., 'div', 'span')
  * @property {string} [id] - Element's ID attribute if present
  * @property {string[]} [classes] - Array of element's CSS classes
- * @property {string} [textContent] - Combined text content of the element
  * @property {DOMElement[]} children - Array of child elements
  * @property {number[]} path - Array representing the element's path in the DOM tree
  * 
@@ -42,7 +41,6 @@ export interface Settings {
  *   tag: 'div',
  *   id: 'main',
  *   classes: ['container', 'flex'],
- *   textContent: 'Hello World',
  *   children: [],
  *   path: [0, 1, 2]
  * };
@@ -57,9 +55,6 @@ export interface DOMElement {
 
   /** Array of element's CSS classes */
   classes?: string[];
-
-  /** Combined text content of the element's direct text nodes */
-  textContent?: string;
 
   /** Array of child elements in the DOM tree */
   children: DOMElement[];

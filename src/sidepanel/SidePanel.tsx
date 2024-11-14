@@ -4,7 +4,7 @@
  * @module SidePanel
  */
 
-import { ArrowUp, Eye, Undo } from 'lucide-react';
+import { ArrowUp, Undo } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Tooltip } from 'react-tooltip';
 import { DOMElement } from '../types';
@@ -61,8 +61,6 @@ const SidePanel: React.FC = () => {
   const [currentElement, setCurrentElement] = useState<DOMElement | null>(null);
   /** Stack of previously selected elements for navigation history */
   const [elementStack, setElementStack] = useState<DOMElement[]>([]);
-  /** Toggle for showing additional element details */
-  const [showDetails, setShowDetails] = useState(false);
   /** ID of the currently active tab */
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
 
@@ -272,14 +270,6 @@ const SidePanel: React.FC = () => {
         <h1 className="text-xl font-bold">DOM Inspector</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-            data-tooltip-id="button-tooltip"
-            data-tooltip-content="Toggle details"
-          >
-            <Eye size={20} />
-          </button>
-          <button
             onClick={navigateToParent}
             className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             disabled={!currentElement || currentElement.path.length <= 1}
@@ -309,11 +299,6 @@ const SidePanel: React.FC = () => {
               {currentElement.id && <p>ID: {currentElement.id}</p>}
               {currentElement.classes && currentElement.classes.length > 0 && (
                 <p>Classes: {currentElement.classes.join(' ')}</p>
-              )}
-              {showDetails && currentElement.textContent && (
-                <p className="truncate">
-                  Text: {currentElement.textContent}
-                </p>
               )}
               <p className="text-gray-500 text-xs">
                 Path: [{currentElement.path.join(', ')}]

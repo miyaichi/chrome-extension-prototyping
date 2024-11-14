@@ -68,16 +68,6 @@ function serializeDOMElement(element: Element, currentPath: number[] = []): DOME
     serialized.classes = Array.from(element.classList);
   }
 
-  const textContent = Array.from(element.childNodes)
-    .filter(node => node.nodeType === Node.TEXT_NODE)
-    .map(node => node.textContent?.trim())
-    .filter(text => text)
-    .join(' ');
-
-  if (textContent) {
-    serialized.textContent = textContent;
-  }
-
   const nonTextChildren = Array.from(element.children);
   serialized.children = nonTextChildren.map((child, index) => {
     const childPath = [...currentPath, index];
