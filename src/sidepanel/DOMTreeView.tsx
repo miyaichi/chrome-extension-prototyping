@@ -46,40 +46,31 @@ const DOMTreeView: React.FC<DOMTreeViewProps> = ({
     return (
       <div className="w-full">
         <div
-          className="flex items-center gap-1 py-1 px-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer"
-          style={{ paddingLeft: `${level * 16}px` }}
+          className={`flex items-center gap-1 py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer
+            ${level === 0 ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+          style={{ paddingLeft: `${level * 20}px` }}
           onClick={() => onNodeSelect(node)}
           onMouseEnter={() => onNodePreview(node)}
           onMouseLeave={onClearPreview}
         >
-          {hasChildren && (
-            <button
-              onClick={handleToggle}
-              className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-            >
-              {isOpen ? (
-                <ChevronDown size={16} className="text-gray-500" />
-              ) : (
-                <ChevronRight size={16} className="text-gray-500" />
-              )}
-            </button>
-          )}
-          {/* Tag name */}
-          <span className="text-blue-600 dark:text-blue-400">{node.tag}</span>
-          {/* ID if present */}
-          {node.id && (
-            <span className="text-purple-600 dark:text-purple-400">#{node.id}</span>
-          )}
-          {/* Classes if present */}
-          {node.classes && node.classes.length > 0 && (
-            <span className="text-green-600 dark:text-green-400">
-              .{node.classes.join('.')}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {hasChildren && (
+              <span onClick={handleToggle}>
+                {isOpen ? (
+                  <ChevronDown size={16} className="text-gray-600" />
+                ) : (
+                  <ChevronRight size={16} className="text-gray-600" />
+                )}
+              </span>
+            )}
+            <span className="text-gray-700 dark:text-gray-200">{node.tag}</span>
+            {node.id && (
+              <span className="text-gray-500 dark:text-gray-400">@{node.id}</span>
+            )}
+          </div>
         </div>
-        {/* Render children if node is expanded */}
         {hasChildren && isOpen && (
-          <div>
+          <div className="border-l border-gray-200 dark:border-gray-700 ml-3">
             {node.children.map((child, index) => (
               <TreeNode key={index} node={child} level={level + 1} />
             ))}
@@ -90,7 +81,7 @@ const DOMTreeView: React.FC<DOMTreeViewProps> = ({
   };
 
   return (
-    <div className="max-h-[60vh] overflow-auto">
+    <div className="max-h-[60vh] overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
       {element.children.map((child, index) => (
         <TreeNode key={index} node={child} />
       ))}
