@@ -1,7 +1,16 @@
 /**
- * Side Panel component for DOM Inspector Chrome extension
- * Provides a user interface for inspecting and navigating DOM elements
+ * Side Panel component for DOM Inspector Chrome extension.
+ * Provides a user interface for inspecting and navigating DOM elements in the active tab.
+ * Features include:
+ * - Displaying current element properties and structure
+ * - Navigation through DOM hierarchy
+ * - Element preview functionality
+ * - Navigation history management
+ * 
  * @module SidePanel
+ * @requires react
+ * @requires lucide-react
+ * @requires react-tooltip
  */
 
 import { ArrowUp, Undo } from 'lucide-react';
@@ -11,29 +20,35 @@ import { DOMElement } from '../types';
 import DOMTreeView from './DOMTreeView';
 
 /**
- * Logs debug messages with side panel prefix
- * @param message - Main message to log
- * @param args - Additional arguments to log
+ * Debug logging utility for side panel operations
+ * Prefixes all log messages with [Side Panel] for easier debugging
+ * 
+ * @param message - Primary message to log
+ * @param args - Additional arguments to include in log
  */
 function sidePanelDebugLog(message: string, ...args: any[]): void {
   console.log(`[Side Panel] ${message}`, ...args);
 }
 
 /**
- * Logs error messages with side panel prefix
- * @param message - Main error message to log
- * @param args - Additional arguments to log
+ * Error logging utility for side panel operations
+ * Prefixes all error messages with [Side Panel] for easier debugging
+ * 
+ * @param message - Primary error message to log
+ * @param args - Additional arguments to include in error log
  */
 function sidePanelErrorLog(message: string, ...args: any[]): void {
   console.error(`[Side Panel] ${message}`, ...args);
 }
 
 /**
- * Sends a message to a specific tab and returns the response
- * @param tabId - ID of the target tab
- * @param message - Message to send
- * @returns Promise resolving with the response
- * @throws Error if message sending fails
+ * Sends a message to the content script in a specific tab
+ * Handles Chrome extension messaging with proper error handling
+ * 
+ * @param tabId - Chrome tab ID to send message to
+ * @param message - Message object to send to the content script
+ * @returns Promise resolving to the response from the content script
+ * @throws Error if message sending fails or runtime error occurs
  */
 const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
   try {
@@ -53,19 +68,26 @@ const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
 };
 
 /**
- * Main side panel component for the DOM Inspector
- * Manages the state and interaction with the inspected webpage
+ * Main Side Panel component that provides the DOM inspection interface
+ * Manages state for selected elements, navigation history, and tab communication
+ * 
+ * @component
  */
 const SidePanel: React.FC = () => {
-  /** Currently selected DOM element */
+  /** State for currently selected DOM element */
   const [currentElement, setCurrentElement] = useState<DOMElement | null>(null);
-  /** Stack of previously selected elements for navigation history */
+  
+  /** Navigation history stack of previously selected elements */
   const [elementStack, setElementStack] = useState<DOMElement[]>([]);
-  /** ID of the currently active tab */
+  
+  /** ID of the currently active Chrome tab being inspected */
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
 
   /**
-   * Cleans up the extension state in the active tab
+   * Cleans up extension state in the active tab
+   * Sends cleanup message to content script
+   * 
+   * @returns Promise that resolves when cleanup is complete
    */
   const cleanup = useCallback(async () => {
     sidePanelDebugLog('Running cleanup');
@@ -80,7 +102,8 @@ const SidePanel: React.FC = () => {
   }, [activeTabId]);
 
   /**
-   * Handles visibility change events for the side panel
+   * Handles visibility change events for the side panel window
+   * Triggers cleanup when panel becomes hidden
    */
   const handleVisibilityChange = useCallback(() => {
     if (document.visibilityState === 'hidden') {
@@ -90,7 +113,8 @@ const SidePanel: React.FC = () => {
   }, [cleanup]);
 
   /**
-   * Handles beforeunload events
+   * Handles beforeunload events for the side panel window
+   * Ensures cleanup runs before panel is closed
    */
   const handleBeforeUnload = useCallback(() => {
     sidePanelDebugLog('beforeunload event triggered');
@@ -98,14 +122,16 @@ const SidePanel: React.FC = () => {
   }, [cleanup]);
 
   /**
-   * Main effect for initializing the side panel and setting up event listeners
+   * Main initialization effect
+   * Sets up event listeners, message handlers, and initial DOM state
    */
   useEffect(() => {
     sidePanelDebugLog('Initializing side panel');
     let isComponentMounted = true;
     
     /**
-     * Initializes the active tab and DOM structure
+     * Initializes the active tab and retrieves initial DOM structure
+     * @async
      */
     const initializeSidePanel = async () => {
       try {
@@ -122,10 +148,14 @@ const SidePanel: React.FC = () => {
       }
     };
 
-    initializeSidePanel();
-
     /**
-     * Handles messages from the content script
+     * Handles incoming messages from the content script
+     * Updates component state based on message content
+     * 
+     * @param message - Message received from content script
+     * @param sender - Message sender information
+     * @param sendResponse - Function to send response back
+     * @returns Boolean indicating if response is handled asynchronously
      */
     const messageListener = (
       message: any,
@@ -141,6 +171,7 @@ const SidePanel: React.FC = () => {
       return false;
     };
 
+    initializeSidePanel();
     chrome.runtime.onMessage.addListener(messageListener);
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -156,8 +187,10 @@ const SidePanel: React.FC = () => {
   }, [cleanup, handleBeforeUnload, handleVisibilityChange]);
 
   /**
-   * Navigates to and selects a child element
-   * @param childElement - Child element to navigate to
+   * Navigates to and selects a child element in the DOM tree
+   * Updates navigation history and current element state
+   * 
+   * @param childElement - Target child element to navigate to
    */
   const navigateToChild = async (childElement: DOMElement) => {
     if (!activeTabId) {
@@ -182,8 +215,10 @@ const SidePanel: React.FC = () => {
   };
 
   /**
-   * Previews a child element by highlighting it
-   * @param childElement - Child element to preview
+   * Temporarily highlights a child element for preview
+   * Does not change current selection or navigation history
+   * 
+   * @param childElement - Element to preview
    */
   const previewChildElement = async (childElement: DOMElement) => {
     if (!activeTabId) return;
@@ -200,7 +235,8 @@ const SidePanel: React.FC = () => {
   };
 
   /**
-   * Navigates to the parent of the current element
+   * Navigates to the parent element of the current selection
+   * Updates navigation history
    */
   const navigateToParent = async () => {
     if (!activeTabId || !currentElement || currentElement.path.length <= 1) {
@@ -224,7 +260,8 @@ const SidePanel: React.FC = () => {
   };
 
   /**
-   * Clears the preview highlight from elements
+   * Clears any active element preview
+   * Restores the display of the currently selected element
    */
   const clearElementPreview = async () => {
     if (!activeTabId) return;
@@ -240,6 +277,7 @@ const SidePanel: React.FC = () => {
 
   /**
    * Navigates back to the previously selected element
+   * Updates navigation history stack
    */
   const navigateBack = async () => {
     if (!activeTabId) {
@@ -327,5 +365,26 @@ const SidePanel: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * Type declarations for component props and dependencies
+ * @example
+ * ```typescript
+ * interface DOMElement {
+ *   tag: string;
+ *   id?: string;
+ *   classes?: string[];
+ *   children: DOMElement[];
+ *   path: number[];
+ * }
+ * 
+ * interface DOMTreeViewProps {
+ *   element: DOMElement;
+ *   onNodeSelect: (element: DOMElement) => void;
+ *   onNodePreview: (element: DOMElement) => void;
+ *   onClearPreview: () => void;
+ * }
+ * ```
+ */
 
 export default SidePanel;

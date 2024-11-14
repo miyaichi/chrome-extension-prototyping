@@ -1,57 +1,87 @@
 /**
- * Content script for Chrome extension that handles DOM element selection and highlighting
+ * Content script module for Chrome extension that handles DOM element selection and highlighting.
+ * This module provides functionality for:
+ * - Selecting and highlighting DOM elements
+ * - Serializing DOM elements for communication with the extension
+ * - Managing element preview and highlight states
+ * - Handling extension messaging and lifecycle
+ * 
  * @module contentScript
  */
 
 import { DOMElement } from '../types';
 
-// Style constants
+/**
+ * Style configuration constants for element highlighting and preview
+ */
 const STYLES = {
+  /** Styles for highlighted elements */
   HIGHLIGHT: {
     outline: '2px solid #4CAF50',
     outlineOffset: '-2px'
   },
+  /** Styles for preview state elements */
   PREVIEW: {
     outline: '2px dashed #4CAF50',
     outlineOffset: '-2px'
   },
+  /** Default/reset styles */
   NONE: {
     outline: '',
     outlineOffset: ''
   }
 } as const;
-const HIGHLIGHT_COLOR_RGB = 'rgb(76, 175, 80)'; // #4CAF50
-const STYLE_CHECK_INTERVAL = 2000; // ms
 
-// State variables
-let highlightedElement: HTMLElement | null = null;
-let previewElement: HTMLElement | null = null;
-let clickHandler: ((event: Event) => void) | null = null;
-let isActive = false;
+/** RGB color value for highlight styling */
+const HIGHLIGHT_COLOR_RGB = 'rgb(76, 175, 80)'; // #4CAF50
+/** Interval for checking highlight style persistence (ms) */
+const STYLE_CHECK_INTERVAL = 2000;
+/** Maximum number of reconnection attempts to background script */
+const MAX_RECONNECT_ATTEMPTS = 3;
+/** Delay between reconnection attempts (ms) */
+const RECONNECT_DELAY = 2000;
 
 /**
- * Logs debug messages with content script prefix
- * @param message - Main message to log
- * @param args - Additional arguments to log
+ * Module state variables
+ */
+/** Currently highlighted DOM element */
+let highlightedElement: HTMLElement | null = null;
+/** Currently previewed DOM element */
+let previewElement: HTMLElement | null = null;
+/** Click event handler function reference */
+let clickHandler: ((event: Event) => void) | null = null;
+/** Extension activation state */
+let isActive = false;
+/** Counter for background script reconnection attempts */
+let reconnectAttempts = 0;
+/** Timer for reconnection attempts */
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Debug logging utility for content script messages
+ * @param message - Primary message to log
+ * @param args - Additional arguments to include in log
  */
 function contentScriptDebugLog(message: string, ...args: any[]): void {
   console.log(`[Content Script] ${message}`, ...args);
 }
 
 /**
- * Logs error messages with content script prefix
- * @param message - Main error message to log
- * @param args - Additional arguments to log
+ * Error logging utility for content script messages
+ * @param message - Primary error message to log
+ * @param args - Additional arguments to include in error log
  */
 function contentScriptErrorLog(message: string, ...args: any[]): void {
   console.error(`[Content Script] ${message}`, ...args);
 }
 
 /**
- * Serializes a DOM element into a plain object structure
- * @param element - DOM element to serialize
- * @param currentPath - Current path in the DOM tree
- * @returns Serialized representation of the element
+ * Creates a serializable representation of a DOM element
+ * Traverses the element's children to create a complete tree structure
+ * 
+ * @param element - The DOM element to serialize
+ * @param currentPath - Array of indices representing the element's position in DOM tree
+ * @returns A serialized object representation of the element
  */
 function serializeDOMElement(element: Element, currentPath: number[] = []): DOMElement {
   const serialized: DOMElement = {
@@ -78,9 +108,11 @@ function serializeDOMElement(element: Element, currentPath: number[] = []): DOME
 }
 
 /**
- * Finds a DOM element using a path array
- * @param path - Array of indices representing the path to the element
- * @returns The found element or null if not found
+ * Locates a DOM element using a path array of indices
+ * Each index in the path represents a child index at that level of the DOM tree
+ * 
+ * @param path - Array of indices representing the path to desired element
+ * @returns The located DOM element or null if not found
  */
 function findElementByPath(path: number[]): Element | null {
   if (!path.length) return document.documentElement;
@@ -108,9 +140,10 @@ function findElementByPath(path: number[]): Element | null {
 }
 
 /**
- * Apply element styles
- * @param element - Element to apply style to
- * @param styles - Applied style
+ * Applies a set of styles to a DOM element
+ * 
+ * @param element - Target element to style
+ * @param styles - Style object containing outline and outlineOffset properties
  */
 function applyStyles(element: HTMLElement, styles: typeof STYLES[keyof typeof STYLES]): void {
   element.style.outline = styles.outline;
@@ -119,6 +152,7 @@ function applyStyles(element: HTMLElement, styles: typeof STYLES[keyof typeof ST
 
 /**
  * Removes highlight styling from the currently highlighted element
+ * Resets the highlightedElement reference to null
  */
 function removeHighlight(): void {
   if (highlightedElement) {
@@ -129,6 +163,7 @@ function removeHighlight(): void {
 
 /**
  * Removes preview styling from the currently previewed element
+ * Resets the previewElement reference to null
  */
 function removePreview(): void {
   if (previewElement) {
@@ -139,7 +174,9 @@ function removePreview(): void {
 
 /**
  * Applies preview highlighting to an element
- * @param element - Element to preview highlight
+ * Removes any existing preview before applying new preview
+ * 
+ * @param element - Element to apply preview highlight to
  */
 function previewHighlight(element: HTMLElement): void {
   if (element === previewElement) return;
@@ -151,6 +188,8 @@ function previewHighlight(element: HTMLElement): void {
 
 /**
  * Applies highlight styling to an element and scrolls it into view
+ * Removes any existing highlight and preview before applying new highlight
+ * 
  * @param element - Element to highlight
  */
 function highlightElement(element: HTMLElement): void {
@@ -169,9 +208,12 @@ function highlightElement(element: HTMLElement): void {
 }
 
 /**
- * Gets the path to an element in the DOM tree
- * @param element - Element to get path for
- * @returns Array of indices representing the path
+ * Calculates the path to an element in the DOM tree
+ * Path is represented as array of indices where each index represents
+ * the position of the element among its siblings at that level
+ * 
+ * @param element - Element to calculate path for
+ * @returns Array of indices representing the path from root to element
  */
 function getElementPath(element: Element): number[] {
   const path: number[] = [];
@@ -198,9 +240,11 @@ function getElementPath(element: Element): number[] {
 }
 
 /**
- * Sends DOM element update to the extension
+ * Sends a DOM element update message to the extension
+ * Serializes the element and its path for transmission
+ * 
  * @param element - Element that was updated
- * @param path - Path to the element
+ * @param path - Path to the element in the DOM tree
  */
 function sendDOMUpdate(element: Element, path: number[]): void {
   try {
@@ -214,8 +258,11 @@ function sendDOMUpdate(element: Element, path: number[]): void {
 }
 
 /**
- * Handles click events on the page
- * @param event - Click event
+ * Handles click events on the page when extension is active
+ * Prevents default behavior and event propagation
+ * Highlights clicked element and sends update to extension
+ * 
+ * @param event - Click event object
  */
 function handleClick(event: Event): void {
   if (!isActive) return;
@@ -232,10 +279,12 @@ function handleClick(event: Event): void {
 }
 
 /**
- * Handles messages from the extension
- * @param message - Message received
- * @param sender - Sender of the message
- * @param sendResponse - Function to send response
+ * Processes messages received from the extension
+ * Handles various command types and returns appropriate responses
+ * 
+ * @param message - Message received from extension
+ * @param sender - Sender information
+ * @param sendResponse - Callback function to send response
  * @returns Boolean indicating if response is handled synchronously
  */
 function handleMessage(
@@ -334,7 +383,61 @@ function handleMessage(
 }
 
 /**
- * Attaches event listeners for the extension
+ * Establishes connection with the extension background script
+ * Sets up disconnect listener and handles reconnection attempts
+ * 
+ * @returns Connected port object
+ */
+function connectToBackground(): chrome.runtime.Port {
+  const port = chrome.runtime.connect({ name: 'content-script-connection' });
+  
+  port.onDisconnect.addListener(() => {
+    contentScriptDebugLog('Port disconnected');
+    
+    if (chrome.runtime.lastError) {
+      contentScriptErrorLog('Port error:', chrome.runtime.lastError);
+    }
+    
+    attemptReconnect();
+  });
+
+  reconnectAttempts = 0;
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  
+  return port;
+}
+
+/**
+ * Attempts to reconnect to background script after disconnection
+ * Implements exponential backoff with maximum retry limit
+ */
+function attemptReconnect(): void {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    contentScriptErrorLog('Max reconnection attempts reached');
+    cleanup();
+    return;
+  }
+
+  reconnectAttempts++;
+  contentScriptDebugLog(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+
+  reconnectTimer = setTimeout(() => {
+    try {
+      connectToBackground();
+      contentScriptDebugLog('Reconnection successful');
+    } catch (error) {
+      contentScriptErrorLog('Reconnection failed:', error);
+      attemptReconnect();
+    }
+  }, RECONNECT_DELAY);
+}
+
+/**
+ * Sets up event listeners for extension functionality
+ * Initializes connection to background script
  */
 function attachEventListeners(): void {
   contentScriptDebugLog('Attaching event listeners');
@@ -345,17 +448,14 @@ function attachEventListeners(): void {
   window.addEventListener('visibilitychange', handleVisibilityChange);
   window.addEventListener('beforeunload', cleanup);
 
-  const port = chrome.runtime.connect({ name: 'content-script-connection' });
-  port.onDisconnect.addListener(() => {
-    contentScriptDebugLog('Port disconnected');
-    cleanup();
-  });
+  connectToBackground();
 
   contentScriptDebugLog('Event listeners attached');
 }
 
 /**
- * Handles visibility change events
+ * Handles page visibility changes
+ * Triggers cleanup when page becomes hidden
  */
 function handleVisibilityChange(): void {
   if (document.visibilityState === 'hidden') {
@@ -364,7 +464,8 @@ function handleVisibilityChange(): void {
 }
 
 /**
- * Cleans up the extension state and removes event listeners
+ * Performs complete cleanup of extension state
+ * Removes highlights, event listeners, and resets state variables
  */
 function cleanup(): void {
   contentScriptDebugLog('Running cleanup');
@@ -386,6 +487,11 @@ function cleanup(): void {
     window.removeEventListener('visibilitychange', handleVisibilityChange);
     window.removeEventListener('beforeunload', cleanup);
 
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    reconnectAttempts = 0;
   } catch (error) {
     contentScriptErrorLog('Error during cleanup:', error);
   }
@@ -395,13 +501,15 @@ function cleanup(): void {
 
 /**
  * Initializes the content script
+ * Sets up message listener and style monitoring interval
+ * Establishes periodic checking of highlight styles
  */
 function initialize(): void {
   contentScriptDebugLog('Initializing');
   chrome.runtime.onMessage.addListener(handleMessage);
   contentScriptDebugLog('Initialization complete - awaiting activation');
 
-  // Check the style of the highlighted element egularly.
+  // Set up periodic style check interval
   setInterval(() => {
     if (!isActive || !highlightedElement) return;
 
@@ -416,11 +524,28 @@ function initialize(): void {
         timestamp: new Date().toISOString()
       });
 
-      // Reapply style
+      // Reapply style if lost
       applyStyles(highlightedElement, STYLES.HIGHLIGHT);
     }
   }, STYLE_CHECK_INTERVAL);
 }
 
-// Initialize the content script
+// Initialize the content script on load
 initialize();
+
+/**
+ * Type declarations for external dependencies and messaging
+ * These should be defined in a separate types file
+ * 
+ * @example
+ * ```typescript
+ * // types.ts
+ * export interface DOMElement {
+ *   tag: string;
+ *   id?: string;
+ *   classes?: string[];
+ *   children: DOMElement[];
+ *   path: number[];
+ * }
+ * ```
+ */
