@@ -1,4 +1,4 @@
-// src/sidepanel/index.tsx
+// src/sidePanel/index.tsx
 import { createRoot } from 'react-dom/client';
 import SidePanel from './SidePanel';
 
