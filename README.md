@@ -86,7 +86,7 @@ npm run build
 ## 開発の始め方
 
 1. `src/types/index.ts` で必要な型を定義
-2. `src/sidepanel/SidePanel.tsx` でポップアップUIを実装
+2. `src/sidepanel/SidePanel.tsx` でサイドパネルUIを実装
 3. `src/background/background.ts` でバックグラウンド処理を実装
 4. `src/contentScript/contentScript.ts` でページ内の処理を実装
 
