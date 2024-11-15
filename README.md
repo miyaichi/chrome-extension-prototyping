@@ -1,6 +1,6 @@
-# Chrome Extension Template
+# Chrome Extension Prototyping
 
-TypeScriptとReactを使用したChrome拡張機能のテンプレートプロジェクトです。
+TypeScriptとReactを使用したChrome拡張機能のプロトタイプです。
 
 ## 機能
 

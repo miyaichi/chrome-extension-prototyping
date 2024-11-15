@@ -1,5 +1,5 @@
 {
-  "name": "chrome-extension-template",
+  "name": "chrome-extension-Prototyping",
   "version": "1.0.0",
   "scripts": {
     "build": "webpack --config webpack.config.js",
