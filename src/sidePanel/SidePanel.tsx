@@ -8,8 +8,8 @@
 import { ArrowUp, Loader2, RefreshCw, Undo } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Tooltip } from 'react-tooltip';
+import DOMTreeView from '../components/DOMTreeView';
 import { DOMElement } from '../types';
-import DOMTreeView from './DOMTreeView';
 import './SidePanel.css';
 
 // Utility functions

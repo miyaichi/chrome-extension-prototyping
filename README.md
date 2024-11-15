@@ -24,12 +24,13 @@ TypeScriptとReactを使用したChrome拡張機能のプロトタイプです�
 ├── src/
 │   ├── background/      # バックグラウンドスクリプト
 │   │   └── background.ts
+│   ├── components       # 共通コンポーネント
+│   │   ├── DOMTreeView.css
+│   │   ├── DOMTreeView.tsx
 │   ├── contentScript/   # コンテンツスクリプト
 │   │   └── contentScript.ts
 │   ├── sidePanel/　　　  # サイドパネルUI関連
 │   │   ├── index.tsx
-│   │   ├── DOMTreeView.css
-│   │   ├── DOMTreeView.tsx
 │   │   ├── SidePanel.css
 │   │   └── SidePanel.tsx
 │   └── types/           # 型定義
