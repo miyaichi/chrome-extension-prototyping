@@ -76,17 +76,22 @@ const contentScriptErrorLog = (message: string, ...args: any[]): void =>
  */
 const serializeDOMElement = (element: Element, currentPath: number[] = []): DOMElement => {
   const serialized: DOMElement = {
-    tag: element.tagName.toLowerCase(),
+    tag: '',
+    firstElementHTML: '',
     children: [],
     path: currentPath
   };
 
-  if (element.id) {
-    serialized.id = element.id;
-  }
+  const clone = element.cloneNode(false) as HTMLElement;
+  applyStyles(clone, STYLES.NONE);
 
-  if (element.classList.length > 0) {
-    serialized.classes = Array.from(element.classList);
+  serialized.tag = clone.tagName.toLowerCase();
+  serialized.firstElementHTML = clone.outerHTML.split('>')[0] + '>';
+  if (clone.id) {
+    serialized.id = clone.id;
+  }
+  if (clone.classList.length > 0) {
+    serialized.classes = Array.from(clone.classList);
   }
 
   const nonTextChildren = Array.from(element.children);

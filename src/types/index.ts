@@ -50,6 +50,9 @@ export interface DOMElement {
   /** HTML tag name of the element (e.g., 'div', 'span') */
   tag: string;
 
+  /** Element's starting HTML content */
+  firstElementHTML: string;
+
   /** Element's ID attribute if present */
   id?: string;
 

@@ -102,11 +102,6 @@
   overflow-wrap: break-word; /* Allow long paths to wrap */
 }
 
-.sidepanel-children-title {
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
 .sidepanel-empty {
   flex: 1;
   display: flex;

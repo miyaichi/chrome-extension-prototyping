@@ -439,6 +439,7 @@ const SidePanel: React.FC = () => {
           <h2 className="sidepanel-element-title">Selected Element</h2>
           <div className="sidepanel-element">
             <div className="sidepanel-element-details">
+              <p>{currentElement.firstElementHTML}</p>
               <p>Tag: {currentElement.tag}</p>
               {currentElement.id && <p>ID: {currentElement.id}</p>}
               {currentElement.classes && currentElement.classes.length > 0 && (
@@ -452,7 +453,7 @@ const SidePanel: React.FC = () => {
 
           {currentElement.children.length > 0 && (
             <div>
-              <h2 className="sidepanel-children-title">Child Elements</h2>
+              <h2 className="sidepanel-element-title">Child Elements</h2>
               <DOMTreeView
                 element={currentElement}
                 onNodeSelect={navigateToChild}
