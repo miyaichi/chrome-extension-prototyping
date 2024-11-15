@@ -1,11 +1,6 @@
 /**
  * Side Panel component for DOM Inspector Chrome extension.
  * Provides a user interface for inspecting and navigating DOM elements in the active tab.
- * Features include:
- * - Displaying current element properties and structure
- * - Navigation through DOM hierarchy
- * - Element preview functionality
- * - Navigation history management
  * 
  * @module SidePanel
  * @requires react
@@ -13,54 +8,78 @@
  * @requires react-tooltip
  */
 
-import { ArrowUp, Undo } from 'lucide-react';
+import { ArrowUp, Loader2, RefreshCw, Undo } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Tooltip } from 'react-tooltip';
 import { DOMElement } from '../types';
 import DOMTreeView from './DOMTreeView';
 
-/**
- * Debug logging utility for side panel operations
- * Prefixes all log messages with [Side Panel] for easier debugging
- * 
- * @param message - Primary message to log
- * @param args - Additional arguments to include in log
- */
-function sidePanelDebugLog(message: string, ...args: any[]): void {
+// Utility functions
+/** Debug logging with [Side Panel] prefix */
+const sidePanelDebugLog = (message: string, ...args: any[]): void => 
   console.log(`[Side Panel] ${message}`, ...args);
-}
 
-/**
- * Error logging utility for side panel operations
- * Prefixes all error messages with [Side Panel] for easier debugging
- * 
- * @param message - Primary error message to log
- * @param args - Additional arguments to include in error log
- */
-function sidePanelErrorLog(message: string, ...args: any[]): void {
+/** Error logging with [Side Panel] prefix */
+const sidePanelErrorLog = (message: string, ...args: any[]): void => 
   console.error(`[Side Panel] ${message}`, ...args);
-}
 
 /**
- * Sends a message to the content script in a specific tab
- * Handles Chrome extension messaging with proper error handling
- * 
- * @param tabId - Chrome tab ID to send message to
- * @param message - Message object to send to the content script
- * @returns Promise resolving to the response from the content script
- * @throws Error if message sending fails or runtime error occurs
+ * Checks if a tab is inspectable by verifying:
+ * 1. Tab is not a Chrome internal page
+ * 2. Content script is properly injected
+ */
+const isTabInspectable = async (tabId: number): Promise<boolean> => {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+      return false;
+    }
+
+    const [isInjected] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => window.hasOwnProperty('__DOM_INSPECTOR_INITIALIZED__'),
+    });
+
+    return isInjected?.result || false;
+  } catch (error) {
+    sidePanelErrorLog('Error checking tab inspectability:', error);
+    return false;
+  }
+};
+
+/**
+ * Injects the content script into a tab with error handling
+ */
+const injectContentScript = async (tabId: number): Promise<boolean> => {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['contentScript.js']
+    });
+    return true;
+  } catch (error) {
+    sidePanelErrorLog('Error injecting content script:', error);
+    return false;
+  }
+};
+
+/**
+ * Sends a message to content script with timeout and error handling
  */
 const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
   try {
-    return await new Promise((resolve, reject) => {
-      chrome.tabs.sendMessage(tabId, message, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(response);
-        }
-      });
-    });
+    return await Promise.race([
+      new Promise((resolve, reject) => {
+        chrome.tabs.sendMessage(tabId, message, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(response);
+          }
+        });
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Message timeout')), 5000))
+    ]);
   } catch (error) {
     sidePanelErrorLog('sending message:', error);
     throw error;
@@ -74,32 +93,87 @@ const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
  * @component
  */
 const SidePanel: React.FC = () => {
-  /** State for currently selected DOM element */
+  // State management
   const [currentElement, setCurrentElement] = useState<DOMElement | null>(null);
-  
-  /** Navigation history stack of previously selected elements */
   const [elementStack, setElementStack] = useState<DOMElement[]>([]);
-  
-  /** ID of the currently active Chrome tab being inspected */
   const [activeTabId, setActiveTabId] = useState<number | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   /**
-   * Cleans up extension state in the active tab
-   * Sends cleanup message to content script
-   * 
-   * @returns Promise that resolves when cleanup is complete
+   * Resets component state with optional display updates
+   */
+  const resetState = useCallback(() => {
+    setCurrentElement(null);
+    setElementStack([]);
+  }, []);
+
+  /**
+   * Cleans up extension state in active tab
    */
   const cleanup = useCallback(async () => {
-    sidePanelDebugLog('Running cleanup');
     if (!activeTabId) return;
-
     try {
-      const response = await sendTabMessage(activeTabId, { type: 'CLEANUP_EXTENSION' });
-      sidePanelDebugLog('Cleanup completed successfully:', response);
+      await sendTabMessage(activeTabId, { type: 'CLEANUP_EXTENSION' });
     } catch (error) {
       sidePanelErrorLog('during cleanup:', error);
     }
   }, [activeTabId]);
+
+/**
+   * Initializes side panel for a specific tab:
+   * 1. Checks tab inspectability
+   * 2. Injects content script if needed
+   * 3. Activates extension
+   * 4. Retrieves initial DOM state
+   */
+  const initializeSidePanel = useCallback(async (tabId: number) => {
+    if (isInitializing) {
+      await cleanup();
+    }
+
+    setIsInitializing(true);
+
+    try {
+      sidePanelDebugLog('Initializing side panel for tab:', tabId);
+
+      const tab = await chrome.tabs.get(tabId);
+      if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://')) {
+        sidePanelErrorLog('Chrome internal pages cannot be inspected');
+        return false;
+      }
+
+      resetState();
+
+      if (!(await isTabInspectable(tabId))) {
+        if (!(await injectContentScript(tabId))) {
+          sidePanelErrorLog('Failed to inject content script');
+          return false;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (activeTabId && activeTabId !== tabId) {
+        await cleanup();
+      }
+
+      setActiveTabId(tabId);
+
+      await sendTabMessage(tabId, { type: 'ACTIVATE_EXTENSION' });
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const response = await sendTabMessage(tabId, { type: 'GET_INITIAL_DOM' });
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get initial DOM');
+      }
+      return true;
+    } catch (error) {
+      sidePanelErrorLog('initializing side panel:', error);
+      return false;
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [activeTabId, cleanup, resetState, isInitializing]);
 
   /**
    * Handles visibility change events for the side panel window
@@ -129,24 +203,40 @@ const SidePanel: React.FC = () => {
     sidePanelDebugLog('Initializing side panel');
     let isComponentMounted = true;
     
-    /**
-     * Initializes the active tab and retrieves initial DOM structure
-     * @async
-     */
-    const initializeSidePanel = async () => {
-      try {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!isComponentMounted || !tabs[0]?.id) return;
-        
-        const tabId = tabs[0].id;
-        sidePanelDebugLog('Active tab ID:', tabId);
-        setActiveTabId(tabId);
-        
-        await sendTabMessage(tabId, { type: 'GET_INITIAL_DOM' });
-      } catch (error) {
-        sidePanelErrorLog('initializing side panel:', error);
+    const handleTabChange = async (activeInfo: chrome.tabs.TabActiveInfo) => {
+      if (!isComponentMounted) return;
+      sidePanelDebugLog('Tab changed:', activeInfo.tabId);
+      await initializeSidePanel(activeInfo.tabId);
+    };
+
+    const handleTabUpdated = async (
+      tabId: number,
+      changeInfo: chrome.tabs.TabChangeInfo,
+      tab: chrome.tabs.Tab
+    ) => {
+      if (!isComponentMounted || !tab.active) return;
+
+      // Only reinitialize if the URL has changed or the page has finished loading
+      if (changeInfo.url || changeInfo.status === 'complete') {
+        sidePanelDebugLog('Active tab updated:', tabId);
+        await initializeSidePanel(tabId);
       }
     };
+
+    // Initialize current tab
+    chrome.tabs.query({ active: true, currentWindow: true })
+      .then(tabs => {
+        if (tabs[0]?.id && isComponentMounted) {
+          initializeSidePanel(tabs[0].id);
+        }
+      })
+      .catch(error => sidePanelErrorLog('querying active tab:', error));
+
+    // Set up all event listeners
+    chrome.tabs.onActivated.addListener(handleTabChange);
+    chrome.tabs.onUpdated.addListener(handleTabUpdated);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     /**
      * Handles incoming messages from the content script
@@ -171,14 +261,13 @@ const SidePanel: React.FC = () => {
       return false;
     };
 
-    initializeSidePanel();
     chrome.runtime.onMessage.addListener(messageListener);
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       sidePanelDebugLog('Cleaning up side panel');
       isComponentMounted = false;
+      chrome.tabs.onActivated.removeListener(handleTabChange);
+      chrome.tabs.onUpdated.removeListener(handleTabUpdated);
       chrome.runtime.onMessage.removeListener(messageListener);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -314,7 +403,7 @@ const SidePanel: React.FC = () => {
             data-tooltip-id="button-tooltip"
             data-tooltip-content="Move to parent element"
           >
-            <ArrowUp size={20} />
+            <ArrowUp size={16} />
           </button>
           <button
             onClick={navigateBack}
@@ -323,12 +412,28 @@ const SidePanel: React.FC = () => {
             data-tooltip-id="button-tooltip"
             data-tooltip-content="Undo last selection"
           >
-            <Undo size={20} />
+            <Undo size={16} />
+          </button>
+          <button
+            onClick={() => activeTabId && initializeSidePanel(activeTabId)}
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            disabled={isInitializing || !activeTabId}
+            data-tooltip-id="button-tooltip"
+            data-tooltip-content="Reinitialize inspector"
+          >
+            <RefreshCw size={16} />
           </button>
         </div>
       </div>
 
-      {currentElement && (
+      {isInitializing ? (
+       <div className="flex-1 flex items-center justify-center">
+       <div className="flex flex-col items-center gap-2">
+         <Loader2 className="animate-spin" size={24} />
+         <p className="text-sm text-gray-500">Initializing...</p>
+       </div>
+     </div>
+      ) : currentElement ? (
         <div className="flex-1 overflow-auto">
           <div className="mb-4 p-3 border rounded">
             <h2 className="font-semibold mb-2">Selected Element</h2>
@@ -356,7 +461,12 @@ const SidePanel: React.FC = () => {
             </div>
           )}
         </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-gray-500">Select an element to inspect</p>
+        </div>
       )}
+
       <Tooltip
         id="button-tooltip"
         place="bottom"
