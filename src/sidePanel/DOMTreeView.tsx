@@ -17,6 +17,7 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import React, { useState } from 'react';
 import { DOMTreeViewProps, TreeNodeProps } from '../types';
+import './DOMTreeView.css';
 
 /**
  * DOMTreeView component for rendering an interactive DOM element tree
@@ -79,39 +80,38 @@ const DOMTreeView: React.FC<DOMTreeViewProps> = ({
     };
 
     return (
-      <div className="w-full">
+      <div className="domtree-node">
         {/* Node header with expand/collapse and element info */}
         <div
-          className={`flex items-center gap-1 py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer
-            ${level === 0 ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+          className={`domtree-node-header ${level === 0 ? 'domtree-node-header--root' : ''}`}
           style={{ paddingLeft: `${level * 20}px` }}
           onClick={() => onNodeSelect(node)}
           onMouseEnter={() => onNodePreview(node)}
           onMouseLeave={onClearPreview}
         >
-          <div className="flex items-center gap-2">
+          <div className="domtree-node-content">
             {/* Expand/collapse toggle button */}
             {hasChildren && (
               <span onClick={handleToggle}>
                 {isOpen ? (
-                  <ChevronDown size={16} className="text-gray-600" />
+                  <ChevronDown size={16} className="domtree-node-toggle-icon" />
                 ) : (
-                  <ChevronRight size={16} className="text-gray-600" />
+                  <ChevronRight size={16} className="domtree-node-toggle-icon" />
                 )}
               </span>
             )}
             {/* Element tag name */}
-            <span className="text-gray-700 dark:text-gray-200">{node.tag}</span>
+            <span className="domtree-node-tag">{node.tag}</span>
             {/* Element ID if present */}
             {node.id && (
-              <span className="text-gray-500 dark:text-gray-400">@{node.id}</span>
-            )}
+             <span className="domtree-node-id">@{node.id}</span>
+           )}
           </div>
         </div>
 
         {/* Child nodes container */}
         {hasChildren && isOpen && (
-          <div className="border-l border-gray-200 dark:border-gray-700 ml-3">
+          <div className="domtree-children">
             {node.children.map((child, index) => (
               <TreeNode key={index} node={child} level={level + 1} />
             ))}
@@ -122,7 +122,7 @@ const DOMTreeView: React.FC<DOMTreeViewProps> = ({
   };
 
   return (
-    <div className="max-h-[60vh] overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
+    <div className="domtree">
       {element.children.map((child, index) => (
         <TreeNode key={index} node={child} />
       ))}

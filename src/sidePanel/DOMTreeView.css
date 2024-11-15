@@ -1,0 +1,84 @@
+.domtree {
+  max-height: 60vh;
+  overflow: auto;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.domtree-node {
+  width: 100%;
+}
+
+.domtree-node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.domtree-node-header:hover {
+  background-color: #f3f4f6;
+}
+
+.domtree-node-header--root {
+  background-color: #eff6ff;
+}
+
+.domtree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.domtree-node-toggle {
+  cursor: pointer;
+}
+
+.domtree-node-toggle-icon {
+  color: #4b5563;
+}
+
+.domtree-node-tag {
+  color: #374151;
+}
+
+.domtree-node-id {
+  color: #6b7280;
+}
+
+.domtree-children {
+  border-left: 1px solid #e5e7eb;
+  margin-left: 0.75rem;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .domtree {
+    border-color: #374151;
+  }
+
+  .domtree-node-header:hover {
+    background-color: #374151;
+  }
+
+  .domtree-node-header--root {
+    background-color: rgba(30, 58, 138, 0.2);
+  }
+
+  .domtree-node-toggle-icon {
+    color: #9ca3af;
+  }
+
+  .domtree-node-tag {
+    color: #e5e7eb;
+  }
+
+  .domtree-node-id {
+    color: #9ca3af;
+  }
+
+  .domtree-children {
+    border-color: #374151;
+  }
+}

@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Tooltip } from 'react-tooltip';
 import { DOMElement } from '../types';
 import DOMTreeView from './DOMTreeView';
+import './SidePanel.css';
 
 // Utility functions
 /** Debug logging with [Side Panel] prefix */
