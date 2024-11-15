@@ -22,17 +22,10 @@ const sidePanelErrorLog = (message: string, ...args: any[]): void =>
   console.error(`[Side Panel] ${message}`, ...args);
 
 /**
- * Checks if a tab is inspectable by verifying:
- * 1. Tab is not a Chrome internal page
- * 2. Content script is properly injected
+ * Checks if a tab is inspectable by the extension
  */
 const isTabInspectable = async (tabId: number): Promise<boolean> => {
   try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-      return false;
-    }
-
     const [isInjected] = await chrome.scripting.executeScript({
       target: { tabId },
       func: () => window.hasOwnProperty('__DOM_INSPECTOR_INITIALIZED__'),
@@ -132,17 +125,10 @@ const SidePanel: React.FC = () => {
     try {
       sidePanelDebugLog('Initializing side panel for tab:', tabId);
 
-      const tab = await chrome.tabs.get(tabId);
-      if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://')) {
-        sidePanelErrorLog('Chrome internal pages cannot be inspected');
-        return false;
-      }
-
       resetState();
 
       if (!(await isTabInspectable(tabId))) {
         if (!(await injectContentScript(tabId))) {
-          sidePanelErrorLog('Failed to inject content script');
           return false;
         }
         await new Promise(resolve => setTimeout(resolve, 500));
