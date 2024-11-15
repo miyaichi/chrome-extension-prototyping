@@ -32,10 +32,9 @@ const STYLES = {
   }
 } as const;
 
-/** RGB color value for highlight styling */
-const HIGHLIGHT_COLOR_RGB = 'rgb(76, 175, 80)'; // #4CAF50
-/** Interval for checking highlight style persistence (ms) */
-const STYLE_CHECK_INTERVAL = 2000;
+/**
+ * Module configuration constants
+ */
 /** Maximum number of reconnection attempts to background script */
 const MAX_RECONNECT_ATTEMPTS = 3;
 /** Delay between reconnection attempts (ms) */
@@ -496,34 +495,13 @@ const cleanup = (): void => {
 }
 
 /**
- * Initializes the content script
- * Sets up message listener and style monitoring interval
- * Establishes periodic checking of highlight styles
+ * Initializes the content script module
+ * Sets up message listener and prepares for activation
  */
 const initialize = (): void => {
   contentScriptDebugLog('Initializing');
   chrome.runtime.onMessage.addListener(handleMessage);
   contentScriptDebugLog('Initialization complete - awaiting activation');
-
-  // Set up periodic style check interval
-  setInterval(() => {
-    if (!isActive || !highlightedElement) return;
-
-    const computedStyle = window.getComputedStyle(highlightedElement);
-    const hasHighlight = computedStyle.outline.includes(HIGHLIGHT_COLOR_RGB);
-
-    if (!hasHighlight) {
-      console.warn('[Style Monitor] Highlight style lost:', {
-        element: highlightedElement.tagName,
-        id: highlightedElement.id,
-        currentOutline: computedStyle.outline,
-        timestamp: new Date().toISOString()
-      });
-
-      // Reapply style if lost
-      applyStyles(highlightedElement, STYLES.HIGHLIGHT);
-    }
-  }, STYLE_CHECK_INTERVAL);
 }
 
 // Initialize the content script on load
