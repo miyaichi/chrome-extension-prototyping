@@ -1,0 +1,120 @@
+/* Reset and base styles */
+.sidepanel {
+  height: 100%;
+  width: 100%;
+  background-color: #ffffff;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidepanel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sidepanel-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.sidepanel-button-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sidepanel-button {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.sidepanel-button:hover {
+  background-color: #f3f4f6;
+}
+
+.sidepanel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidepanel-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidepanel-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sidepanel-loading-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.sidepanel-content {
+  flex: 1;
+  overflow: auto;
+}
+
+.sidepanel-element {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+}
+
+.sidepanel-element-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.sidepanel-element-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.sidepanel-element-path {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.sidepanel-children-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.sidepanel-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .sidepanel {
+    background-color: #1f2937;
+    color: #ffffff;
+  }
+
+  .sidepanel-button:hover {
+    background-color: #374151;
+  }
+
+  .sidepanel-element {
+    border-color: #374151;
+  }
+}

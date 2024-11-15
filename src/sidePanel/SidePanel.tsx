@@ -392,13 +392,13 @@ const SidePanel: React.FC = () => {
   };
 
   return (
-    <div className="h-full w-full bg-white dark:bg-gray-800 p-4 flex flex-col">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">DOM Inspector</h1>
-        <div className="flex gap-2">
+    <div className="sidepanel">
+      <div className="sidepanel-header">
+        <h1 className="sidepanel-title">DOM Inspector</h1>
+        <div className="sidepanel-button-group">
           <button
             onClick={navigateToParent}
-            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="sidepanel-button"
             disabled={!currentElement || currentElement.path.length <= 1}
             data-tooltip-id="button-tooltip"
             data-tooltip-content="Move to parent element"
@@ -407,7 +407,7 @@ const SidePanel: React.FC = () => {
           </button>
           <button
             onClick={navigateBack}
-            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="sidepanel-button"
             disabled={!currentElement || elementStack.length === 0}
             data-tooltip-id="button-tooltip"
             data-tooltip-content="Undo last selection"
@@ -416,7 +416,7 @@ const SidePanel: React.FC = () => {
           </button>
           <button
             onClick={() => activeTabId && initializeSidePanel(activeTabId)}
-            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="sidepanel-button"
             disabled={isInitializing || !activeTabId}
             data-tooltip-id="button-tooltip"
             data-tooltip-content="Reinitialize inspector"
@@ -427,23 +427,23 @@ const SidePanel: React.FC = () => {
       </div>
 
       {isInitializing ? (
-       <div className="flex-1 flex items-center justify-center">
-       <div className="flex flex-col items-center gap-2">
-         <Loader2 className="animate-spin" size={24} />
-         <p className="text-sm text-gray-500">Initializing...</p>
-       </div>
-     </div>
+        <div className="sidepanel-loading">
+          <div className="sidepanel-loading-content">
+            <Loader2 className="animate-spin" size={24} />
+            <p className="sidepanel-loading-text">Initializing...</p>
+          </div>
+        </div>
       ) : currentElement ? (
-        <div className="flex-1 overflow-auto">
-          <div className="mb-4 p-3 border rounded">
-            <h2 className="font-semibold mb-2">Selected Element</h2>
-            <div className="space-y-1 text-sm">
+        <div className="sidepanel-content">
+          <div className="sidepanel-element">
+            <h2 className="sidepanel-element-title">Selected Element</h2>
+            <div className="sidepanel-element-details">
               <p>Tag: {currentElement.tag}</p>
               {currentElement.id && <p>ID: {currentElement.id}</p>}
               {currentElement.classes && currentElement.classes.length > 0 && (
                 <p>Classes: {currentElement.classes.join(' ')}</p>
               )}
-              <p className="text-gray-500 text-xs">
+              <p className="sidepanel-element-path">
                 Path: [{currentElement.path.join(', ')}]
               </p>
             </div>
@@ -451,7 +451,7 @@ const SidePanel: React.FC = () => {
 
           {currentElement.children.length > 0 && (
             <div>
-              <h3 className="font-semibold mb-2">Child Elements</h3>
+              <h3 className="sidepanel-children-title">Child Elements</h3>
               <DOMTreeView
                 element={currentElement}
                 onNodeSelect={navigateToChild}
@@ -462,15 +462,14 @@ const SidePanel: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-gray-500">Select an element to inspect</p>
+        <div className="sidepanel-empty">
+          <p>Select an element to inspect</p>
         </div>
       )}
 
       <Tooltip
         id="button-tooltip"
         place="bottom"
-        style={{ backgroundColor: '#333', color: '#fff' }}
       />
     </div>
   );
