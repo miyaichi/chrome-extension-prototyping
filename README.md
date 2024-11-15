@@ -9,13 +9,14 @@ TypeScriptとReactを使用したChrome拡張機能のプロトタイプです�
 - サイドパネルUI
 - コンテンツスクリプト
 - バックグラウンドスクリプト
-- DOM操作、メッセージパッシング、ストレージAPIのサンプル
+- メッセージパッシング
+- インタラクティブなDOMの探索
 
 ## ディレクトリ構成
 
 ```
 ├── assets/
-│   ├── icons/
+│    └─ icons/
 │       ├── source/      # アイコンのソースファイル
 │       └── build/       # svgファイルから生成したアイコン
 ├── public/
@@ -25,7 +26,7 @@ TypeScriptとReactを使用したChrome拡張機能のプロトタイプです�
 │   │   └── background.ts
 │   ├── contentScript/   # コンテンツスクリプト
 │   │   └── contentScript.ts
-│   ├── sidepanel/　　　  # サイドパネルUI関連
+│   ├── sidePanel/　　　  # サイドパネルUI関連
 │   │   ├── index.tsx
 │   │   ├── DOMTreeView.css
 │   │   ├── DOMTreeView.tsx
@@ -33,14 +34,16 @@ TypeScriptとReactを使用したChrome拡張機能のプロトタイプです�
 │   │   └── SidePanel.tsx
 │   └── types/           # 型定義
 │       └── index.ts
+├── LICENSE              # ライセンス
+├── README.md            # 本ファイル
 ├── dist/                # ビルド出力（git管理外）
-├── node_modules/        # 依存パッケージ (git管理外)
 ├── manifest.json        # 拡張機能マニフェスト
-├── webpack.config.js    # Webpack設定
+├── node_modules/        # 依存パッケージ (git管理外)
+├── package-lock.json    # パッケージロック
+├── package.json         # パッケージ設定
 ├── tsconfig.json        # TypeScript設定
 ├── typedoc.json         # TypeDoc設定
-├── package.json         # プロジェクト設定
-└── README.md            # 本ファイル
+└── webpack.config.js    # Webpack設定
 ```
 
 ## 必要要件
