@@ -18,27 +18,15 @@
  */
 let activeTabId: number | null = null;
 
-/**
- * Debug logging utility for background script operations
- * Prefixes all log messages with [Background] for easier debugging
- * 
- * @param message - Primary message to log
- * @param args - Additional arguments to include in log
- */
-function backgroundDebugLog(message: string, ...args: any[]): void {
-  console.log(`[Background] ${message}`, ...args);
-}
 
-/**
- * Error logging utility for background script operations
- * Prefixes all error messages with [Background] for easier debugging
- * 
- * @param message - Primary error message to log
- * @param args - Additional arguments to include in error log
- */
-function backgroundErrorLog(message: string, ...args: any[]): void {
+// Utility functions
+/** Debug logging with [Background] prefix */
+const backgroundDebugLog = (message: string, ...args: any[]): void => 
+  console.log(`[Background] ${message}`, ...args);
+
+/** Error logging with [Background] prefix */
+const backgroundErrorLog = (message: string, ...args: any[]): void => 
   console.error(`[Background] ${message}`, ...args);
-}
 
 /**
  * Configures and initializes the extension's side panel

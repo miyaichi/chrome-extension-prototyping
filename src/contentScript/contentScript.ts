@@ -57,23 +57,14 @@ let reconnectAttempts = 0;
 /** Timer for reconnection attempts */
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-/**
- * Debug logging utility for content script messages
- * @param message - Primary message to log
- * @param args - Additional arguments to include in log
- */
-function contentScriptDebugLog(message: string, ...args: any[]): void {
+// Utility functions
+/** Debug logging with [Content Script] prefix */
+const contentScriptDebugLog = (message: string, ...args: any[]): void => 
   console.log(`[Content Script] ${message}`, ...args);
-}
 
-/**
- * Error logging utility for content script messages
- * @param message - Primary error message to log
- * @param args - Additional arguments to include in error log
- */
-function contentScriptErrorLog(message: string, ...args: any[]): void {
+/** Error logging with [Content Script] prefix */
+const contentScriptErrorLog = (message: string, ...args: any[]): void => 
   console.error(`[Content Script] ${message}`, ...args);
-}
 
 /**
  * Creates a serializable representation of a DOM element
@@ -83,7 +74,7 @@ function contentScriptErrorLog(message: string, ...args: any[]): void {
  * @param currentPath - Array of indices representing the element's position in DOM tree
  * @returns A serialized object representation of the element
  */
-function serializeDOMElement(element: Element, currentPath: number[] = []): DOMElement {
+const serializeDOMElement = (element: Element, currentPath: number[] = []): DOMElement => {
   const serialized: DOMElement = {
     tag: element.tagName.toLowerCase(),
     children: [],
@@ -114,7 +105,7 @@ function serializeDOMElement(element: Element, currentPath: number[] = []): DOME
  * @param path - Array of indices representing the path to desired element
  * @returns The located DOM element or null if not found
  */
-function findElementByPath(path: number[]): Element | null {
+const findElementByPath = (path: number[]): Element | null => {
   if (!path.length) return document.documentElement;
 
   let element: Element = document.documentElement;
@@ -145,7 +136,7 @@ function findElementByPath(path: number[]): Element | null {
  * @param element - Target element to style
  * @param styles - Style object containing outline and outlineOffset properties
  */
-function applyStyles(element: HTMLElement, styles: typeof STYLES[keyof typeof STYLES]): void {
+const applyStyles = (element: HTMLElement, styles: typeof STYLES[keyof typeof STYLES]): void => {
   element.style.outline = styles.outline;
   element.style.outlineOffset = styles.outlineOffset;
 }
@@ -154,7 +145,7 @@ function applyStyles(element: HTMLElement, styles: typeof STYLES[keyof typeof ST
  * Removes highlight styling from the currently highlighted element
  * Resets the highlightedElement reference to null
  */
-function removeHighlight(): void {
+const removeHighlight = (): void => {
   if (highlightedElement) {
     applyStyles(highlightedElement, STYLES.NONE);
     highlightedElement = null;
@@ -165,7 +156,7 @@ function removeHighlight(): void {
  * Removes preview styling from the currently previewed element
  * Resets the previewElement reference to null
  */
-function removePreview(): void {
+const removePreview = (): void => {
   if (previewElement) {
     applyStyles(previewElement, STYLES.NONE);
     previewElement = null;
@@ -178,7 +169,7 @@ function removePreview(): void {
  * 
  * @param element - Element to apply preview highlight to
  */
-function previewHighlight(element: HTMLElement): void {
+const previewHighlight = (element: HTMLElement): void => {
   if (element === previewElement) return;
 
   removePreview();
@@ -192,7 +183,7 @@ function previewHighlight(element: HTMLElement): void {
  * 
  * @param element - Element to highlight
  */
-function highlightElement(element: HTMLElement): void {
+const highlightElement = (element: HTMLElement): void => {
   if (element === highlightedElement) return;
 
   removeHighlight();
@@ -215,7 +206,7 @@ function highlightElement(element: HTMLElement): void {
  * @param element - Element to calculate path for
  * @returns Array of indices representing the path from root to element
  */
-function getElementPath(element: Element): number[] {
+const getElementPath = (element: Element): number[] => {
   const path: number[] = [];
   let currentElement: Element | null = element;
   let parentElement: Element | null;
@@ -246,7 +237,7 @@ function getElementPath(element: Element): number[] {
  * @param element - Element that was updated
  * @param path - Path to the element in the DOM tree
  */
-function sendDOMUpdate(element: Element, path: number[]): void {
+const sendDOMUpdate = (element: Element, path: number[]): void => {
   try {
     chrome.runtime.sendMessage({
       type: 'DOM_ELEMENT_UPDATE',
@@ -264,7 +255,7 @@ function sendDOMUpdate(element: Element, path: number[]): void {
  * 
  * @param event - Click event object
  */
-function handleClick(event: Event): void {
+const handleClick = (event: Event): void => {
   if (!isActive) return;
 
   if (event.target instanceof HTMLElement) {
@@ -287,11 +278,11 @@ function handleClick(event: Event): void {
  * @param sendResponse - Callback function to send response
  * @returns Boolean indicating if response is handled synchronously
  */
-function handleMessage(
+const handleMessage = (
   message: any,
   sender: chrome.runtime.MessageSender,
   sendResponse: (response?: any) => void
-): boolean {
+): boolean => {
   contentScriptDebugLog('Received message:', message.type);
   
   try {
@@ -388,7 +379,7 @@ function handleMessage(
  * 
  * @returns Connected port object
  */
-function connectToBackground(): chrome.runtime.Port {
+const connectToBackground = (): chrome.runtime.Port => {
   const port = chrome.runtime.connect({ name: 'content-script-connection' });
   
   port.onDisconnect.addListener(() => {
@@ -414,7 +405,7 @@ function connectToBackground(): chrome.runtime.Port {
  * Attempts to reconnect to background script after disconnection
  * Implements exponential backoff with maximum retry limit
  */
-function attemptReconnect(): void {
+const attemptReconnect = (): void => {
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
     contentScriptErrorLog('Max reconnection attempts reached');
     cleanup();
@@ -439,7 +430,7 @@ function attemptReconnect(): void {
  * Sets up event listeners for extension functionality
  * Initializes connection to background script
  */
-function attachEventListeners(): void {
+const attachEventListeners = (): void => {
   contentScriptDebugLog('Attaching event listeners');
 
   clickHandler = handleClick;
@@ -457,7 +448,7 @@ function attachEventListeners(): void {
  * Handles page visibility changes
  * Triggers cleanup when page becomes hidden
  */
-function handleVisibilityChange(): void {
+const handleVisibilityChange = (): void => {
   if (document.visibilityState === 'hidden') {
     cleanup();
   }
@@ -467,7 +458,7 @@ function handleVisibilityChange(): void {
  * Performs complete cleanup of extension state
  * Removes highlights, event listeners, and resets state variables
  */
-function cleanup(): void {
+const cleanup = (): void => {
   contentScriptDebugLog('Running cleanup');
 
   try {
@@ -504,7 +495,7 @@ function cleanup(): void {
  * Sets up message listener and style monitoring interval
  * Establishes periodic checking of highlight styles
  */
-function initialize(): void {
+const initialize = (): void => {
   contentScriptDebugLog('Initializing');
   chrome.runtime.onMessage.addListener(handleMessage);
   contentScriptDebugLog('Initialization complete - awaiting activation');

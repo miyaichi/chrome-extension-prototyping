@@ -119,7 +119,7 @@ const SidePanel: React.FC = () => {
     }
   }, [activeTabId]);
 
-/**
+  /**
    * Initializes side panel for a specific tab:
    * 1. Checks tab inspectability
    * 2. Injects content script if needed
