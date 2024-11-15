@@ -30,6 +30,7 @@ export interface Settings {
  * 
  * @interface DOMElement
  * @property {string} tag - HTML tag name of the element (e.g., 'div', 'span')
+ * @property {string} firstElementHTML - Element's starting HTML content
  * @property {string} [id] - Element's ID attribute if present
  * @property {string[]} [classes] - Array of element's CSS classes
  * @property {DOMElement[]} children - Array of child elements
@@ -39,6 +40,7 @@ export interface Settings {
  * ```typescript
  * const element: DOMElement = {
  *   tag: 'div',
+ *   firstElementHTML: '<div class="container flex">',
  *   id: 'main',
  *   classes: ['container', 'flex'],
  *   children: [],

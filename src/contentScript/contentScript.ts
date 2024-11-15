@@ -12,29 +12,10 @@
 import { DOMElement } from '../types';
 
 /**
- * Style configuration constants for element highlighting and preview
- */
-const STYLES = {
-  /** Styles for highlighted elements */
-  HIGHLIGHT: {
-    outline: '2px solid #4CAF50',
-    outlineOffset: '-2px'
-  },
-  /** Styles for preview state elements */
-  PREVIEW: {
-    outline: '2px dashed #4CAF50',
-    outlineOffset: '-2px'
-  },
-  /** Default/reset styles */
-  NONE: {
-    outline: '',
-    outlineOffset: ''
-  }
-} as const;
-
-/**
  * Module configuration constants
  */
+/** Color for hilighting selected elements */
+const HILIGHT_COLOR = '#4CAF50';
 /** Maximum number of reconnection attempts to background script */
 const MAX_RECONNECT_ATTEMPTS = 3;
 /** Delay between reconnection attempts (ms) */
@@ -82,7 +63,7 @@ const serializeDOMElement = (element: Element, currentPath: number[] = []): DOME
   };
 
   const clone = element.cloneNode(false) as HTMLElement;
-  applyStyles(clone, STYLES.NONE);
+  clearHilight(clone);
 
   serialized.tag = clone.tagName.toLowerCase();
   serialized.firstElementHTML = clone.outerHTML.split('>')[0] + '>';
@@ -135,14 +116,24 @@ const findElementByPath = (path: number[]): Element | null => {
 }
 
 /**
- * Applies a set of styles to a DOM element
+ * Applies a highlight to an element using CSS outline property
  * 
- * @param element - Target element to style
- * @param styles - Style object containing outline and outlineOffset properties
+ * @param element - Element to highlight
+ * @param style - Style of the outline, either 'solid' or 'dashed'
  */
-const applyStyles = (element: HTMLElement, styles: typeof STYLES[keyof typeof STYLES]): void => {
-  element.style.outline = styles.outline;
-  element.style.outlineOffset = styles.outlineOffset;
+const applyHilight = (element: HTMLElement, style: 'solid' | 'dashed') => {
+  element.style.outline = `2px ${style} ${HILIGHT_COLOR}`;
+  element.style.outlineOffset = '-2px';
+}
+
+/**
+ * Clears any existing highlight from an element
+ * 
+ * @param element - Element to clear highlight from
+ */
+const clearHilight = (element: HTMLElement) => {
+  element.style.outline = '';
+  element.style.outlineOffset = '';
 }
 
 /**
@@ -151,7 +142,7 @@ const applyStyles = (element: HTMLElement, styles: typeof STYLES[keyof typeof ST
  */
 const removeHighlight = (): void => {
   if (highlightedElement) {
-    applyStyles(highlightedElement, STYLES.NONE);
+    clearHilight(highlightedElement);
     highlightedElement = null;
   }
 }
@@ -162,7 +153,7 @@ const removeHighlight = (): void => {
  */
 const removePreview = (): void => {
   if (previewElement) {
-    applyStyles(previewElement, STYLES.NONE);
+    clearHilight(previewElement);
     previewElement = null;
   }
 }
@@ -178,7 +169,7 @@ const previewHighlight = (element: HTMLElement): void => {
 
   removePreview();
   previewElement = element;
-  applyStyles(element, STYLES.PREVIEW);
+  applyHilight(element, 'dashed');
 }
 
 /**
@@ -193,7 +184,7 @@ const highlightElement = (element: HTMLElement): void => {
   removeHighlight();
   removePreview();
   highlightedElement = element;
-  applyStyles(element, STYLES.HIGHLIGHT);
+  applyHilight(element, 'solid');
   
   element.scrollIntoView({
     behavior: 'smooth',
@@ -516,6 +507,7 @@ initialize();
  * // types.ts
  * export interface DOMElement {
  *   tag: string;
+ *   firstElementHTML: string;
  *   id?: string;
  *   classes?: string[];
  *   children: DOMElement[];

@@ -3,9 +3,6 @@
  * Provides a user interface for inspecting and navigating DOM elements in the active tab.
  * 
  * @module SidePanel
- * @requires react
- * @requires lucide-react
- * @requires react-tooltip
  */
 
 import { ArrowUp, Loader2, RefreshCw, Undo } from 'lucide-react';
@@ -90,8 +87,6 @@ const sendTabMessage = async (tabId: number, message: any): Promise<any> => {
 /**
  * Main Side Panel component that provides the DOM inspection interface
  * Manages state for selected elements, navigation history, and tab communication
- * 
- * @component
  */
 const SidePanel: React.FC = () => {
   // State management
@@ -483,6 +478,7 @@ const SidePanel: React.FC = () => {
  * ```typescript
  * interface DOMElement {
  *   tag: string;
+ *   firstElementHTML: string;
  *   id?: string;
  *   classes?: string[];
  *   children: DOMElement[];

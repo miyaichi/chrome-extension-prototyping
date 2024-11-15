@@ -117,8 +117,19 @@
     color: #ffffff;
   }
 
-  .sidepanel-button:hover {
+  .sidepanel-button {
     background-color: #374151;
+    color: #ffffff;
+  }
+
+  .sidepanel-button:hover {
+    background-color: #4b5563;
+  }
+
+  .sidepanel-button:disabled {
+    background-color: #4b5563;
+    color: #9ca3af;
+    opacity: 0.5;
   }
 
   .sidepanel-element {

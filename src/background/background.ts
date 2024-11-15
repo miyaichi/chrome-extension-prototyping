@@ -8,7 +8,6 @@
  * - Processing global extension messages
  * 
  * @module background
- * @requires chrome
  */
 
 /** 

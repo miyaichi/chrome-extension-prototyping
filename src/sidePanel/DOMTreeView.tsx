@@ -10,8 +10,6 @@
  * - Dark mode support
  * 
  * @module DOMTreeView
- * @requires react
- * @requires lucide-react
  */
 
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -23,7 +21,6 @@ import './DOMTreeView.css';
  * DOMTreeView component for rendering an interactive DOM element tree
  * Provides a hierarchical view of DOM elements with expand/collapse functionality
  * 
- * @component
  * @param props - Component properties
  * @param props.element - Root DOM element to display
  * @param props.onNodeSelect - Callback function when node is selected
@@ -136,6 +133,7 @@ const DOMTreeView: React.FC<DOMTreeViewProps> = ({
  * ```typescript
  * interface DOMElement {
  *   tag: string;
+ *   firstElementHTML: string;
  *   id?: string;
  *   classes?: string[];
  *   children: DOMElement[];
